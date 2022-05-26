@@ -2,7 +2,7 @@ import datetime
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from mongoengine import connect, Document, fields
+from mongoengine import Document, connect, fields
 from mongoengine.context_managers import switch_collection, switch_db
 
 from atlasq.queryset.cache import AtlasCache, AtlasDbCache, AtlasRamCache

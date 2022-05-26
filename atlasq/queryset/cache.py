@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Any, Dict, List, Tuple, Union
 
-from mongoengine import Document, get_db, QuerySet
+from mongoengine import Document, QuerySet, get_db
 from mongoengine.context_managers import switch_collection, switch_db
 from pymongo.collection import Collection
 
@@ -109,9 +109,9 @@ class AtlasDbCache(_AtlasCache):
         with switch_db(self._document, self._db_connection_alias) as OtherDbCollection:
             with switch_collection(OtherDbCollection, collection) as OtherCollection:
                 OtherCollection: Document
-                OtherCollection._meta["expire_at"] = datetime.datetime.now() + datetime.timedelta(
-                    minutes=max_minutes
-                )
+                OtherCollection._meta[
+                    "expire_at"
+                ] = datetime.datetime.now() + datetime.timedelta(minutes=max_minutes)
 
         logger.debug(f"Db Cache expiration set for {key}")
 
@@ -127,7 +127,7 @@ class AtlasRamCache(_AtlasCache):
             del self._cache[key]
 
     def set(self, aggregations: List[Dict], value: Any, max_minutes: int) -> None:
-        expire_date = now() + datetime.timedelta(minutes=max_minutes)
+        expire_date = datetime.datetime.now() + datetime.timedelta(minutes=max_minutes)
         key = self._aggregations_to_key(aggregations)
         self._cache[key] = (expire_date, value)
         logger.debug(f"Ram Cache set for {key}")
@@ -136,7 +136,7 @@ class AtlasRamCache(_AtlasCache):
         key = self._aggregations_to_key(aggregations)
         if key in self._cache:
             submission_time, objects = self._cache[key]
-            if force or now() <= submission_time:
+            if force or datetime.datetime.now() <= submission_time:
                 logger.debug(f"Ram Cache hit for {key}")
                 return objects
 
@@ -178,7 +178,7 @@ class AtlasCache(AtlasDbCache, AtlasRamCache):
                 ) as OtherCollection:
                     expire_in = self.get_collection_expiration(OtherCollection)
             # we calculate the expiration time and round it to the nearest minute
-            diff = expire_in - now()
+            diff = expire_in - datetime.datetime.now()
             minutes_rounded = int((diff.total_seconds() + 60 / 2) // 60)
             # and finally we can set it with a generator
             AtlasRamCache.set(self, aggregations, objects, minutes_rounded)

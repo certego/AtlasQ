@@ -135,7 +135,8 @@ class AtlasQuerySet(QuerySet):
             # we have to retrieve the document from the main db
             query = Q()
             for obj in objects:
-                # we are sure that these fields are present, so we can safely use them to retrieve the valid document
+                # we are sure that these fields are present,
+                # so we can safely use them to retrieve the valid document
                 query |= Q(**{field: obj[field] for field in self.must_fields_to_show})
         else:
             logger.debug("No redirection of output to cache collection")

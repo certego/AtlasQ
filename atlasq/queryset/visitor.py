@@ -4,7 +4,6 @@ from typing import Dict, List, Tuple
 from mongoengine import Q
 from mongoengine.queryset.visitor import QueryCompilerVisitor, SimplificationVisitor
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +23,6 @@ class AtlasSimplificationVisitor(SimplificationVisitor):
 
 
 class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
-
     def visit_combination(self, combination) -> Tuple[Dict, List[Dict]]:
         filters = []
         aggregations = []
@@ -34,18 +32,17 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
             aggregations.extend(child[1])
 
         if combination.operation == combination.OR:
-            return{"compound": {
-                "should": filters,
-                "minimumShouldMatch": 1
-            }}, aggregations
-        return {"compound":{
-            "filter": filters
-        }}, aggregations
+            return {
+                "compound": {"should": filters, "minimumShouldMatch": 1}
+            }, aggregations
+        return {"compound": {"filter": filters}}, aggregations
 
     def visit_query(self, query) -> Tuple[Dict, List[Dict]]:
         from atlasq.queryset.transform import AtlasTransform
 
-        affirmative, negative, other_aggregations = AtlasTransform(query.query).transform()
+        affirmative, negative, other_aggregations = AtlasTransform(
+            query.query
+        ).transform()
         result = {}
         if affirmative:
             result.setdefault("compound", {})["filter"] = affirmative

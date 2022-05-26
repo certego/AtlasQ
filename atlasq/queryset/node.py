@@ -1,12 +1,13 @@
 import logging
-
-from mongoengine.queryset.visitor import QCombination
-
-from typing import Dict, Tuple, List, Union
+from typing import Dict, List, Tuple, Union
 
 from mongoengine import Q
+from mongoengine.queryset.visitor import QCombination
 
-from atlasq.queryset.visitor import AtlasSimplificationVisitor, AtlasQueryCompilerVisitor
+from atlasq.queryset.visitor import (
+    AtlasQueryCompilerVisitor,
+    AtlasSimplificationVisitor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,7 @@ class AtlasQ(Q):
         return AtlasQ(**result.query)
 
 
-
 class AtlasQCombination(QCombination):
-
     def _combine(self, other, operation):
         logger.debug(f"_combine {self.__class__.__name__} {other}, {operation}")
         result = super()._combine(other, operation)

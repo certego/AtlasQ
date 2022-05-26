@@ -5,7 +5,8 @@ Robust Python SDK and CLI for interacting with Certego's Dragonfly service's API
 """
 
 from pathlib import Path
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 # constants
 GITHUB_URL = "https://github.com/certego/atlasq"

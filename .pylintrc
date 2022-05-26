@@ -24,7 +24,7 @@ jobs=4
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_django
+#load-plugins=
 # Pickle collected data for later comparisons.
 persistent=yes
 
@@ -448,7 +448,6 @@ no-docstring-rgx=^_
 # List of decorators that produce properties, such as abc.abstractproperty. Add
 # to this list to register other decorators that produce valid properties.
 property-classes=abc.abstractproperty,
-    django.utils.functional.classproperty,
     property
 
 # Naming style matching correct variable names

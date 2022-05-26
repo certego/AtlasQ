@@ -1,4 +1,3 @@
-from django.conf import settings
 from mongoengine import QuerySetManager
 
 from atlasq.queryset.queryset import AtlasQuerySet
@@ -21,7 +20,7 @@ class AtlasManager(QuerySetManager):
             )
             return res
 
-    def __init__(self, index: str = settings.ATLAS_INDEX):
+    def __init__(self, index: str):
         super().__init__()
         self.index = index
 

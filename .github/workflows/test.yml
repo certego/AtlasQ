@@ -37,10 +37,6 @@ jobs:
         run: |
           black . --check
 
-      - name: Mypy
-        run: |
-          mypy .
-
       - name: Pylint
         run: |
           pylint .

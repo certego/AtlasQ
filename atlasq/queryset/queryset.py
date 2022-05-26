@@ -3,7 +3,6 @@ import json
 import logging
 from typing import Dict, List
 
-from django.conf import settings
 from mongoengine import Q, QuerySet
 from mongoengine.common import _import_class
 
@@ -32,7 +31,11 @@ class AtlasQuerySet(QuerySet):
     }
 
     def clone(self) -> "AtlasQuerySet":
-        return self._clone_into(self.__class__(self._document, self._collection))
+        return self._clone_into(
+            self.__class__(
+                self._document, self._collection, self.cache._db_connection_alias
+            )
+        )
 
     def _clone_into(self, new_qs) -> "AtlasQuerySet":
         new_qs = super()._clone_into(new_qs)
@@ -45,7 +48,9 @@ class AtlasQuerySet(QuerySet):
     def __repr__(self):
         return repr(self._execute())
 
-    def __init__(self, document, collection, cache_expiration: int = 0):
+    def __init__(
+        self, document, collection, cache_alias: str, cache_expiration: int = 0
+    ):
         super().__init__(document, collection)
         self.filters: List[Dict] = []
         self.aggregations: List[Dict] = []
@@ -57,9 +62,7 @@ class AtlasQuerySet(QuerySet):
         self.fields_to_show = set()
         self.order_by_fields = set()
         self.count_objects: bool = False
-        self.cache = AtlasCache(
-            self._document, self._collection, settings.MONGO_CACHE_ALIAS
-        )
+        self.cache = AtlasCache(self._document, self._collection, cache_alias)
         self.cache_expiration = cache_expiration
 
         self._index = None

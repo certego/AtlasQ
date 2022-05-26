@@ -227,7 +227,7 @@ class AtlasQuerySet(QuerySet):
         )
         return qs
 
-    def count(self, **kwargs):
+    def count(self, with_limit_and_skip=False):
         qs = self.clone()
         qs.count_objects = True
         if qs.filters:
@@ -247,7 +247,7 @@ class AtlasQuerySet(QuerySet):
                 return count["meta"]["count"]["total"]
             return count["count"]
 
-    def filter(self, q_obj=None, **query):
+    def filter(self, q_obj=None, **query): # pylint: disable=arguments-differ
         q = AtlasQ(**query)
         if q_obj:
             if not isinstance(q_obj, AtlasQ) and not isinstance(

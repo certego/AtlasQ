@@ -150,6 +150,7 @@ disable=print-statement,
         redefined-argument-from-local,
         super-with-arguments,
         no-member,
+        bad-continuation,
 
 
 # Enable the message, report, category or checker with the given id(s). You can

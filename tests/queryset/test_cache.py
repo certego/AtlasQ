@@ -19,7 +19,7 @@ class TestAtlasCache(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.aggregations = [{"mamma": "mia"}]
-        connect("mongoenginetest",host="mongomock://localhost")
+        connect("mongoenginetest", host="mongomock://localhost")
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -93,7 +93,6 @@ class TestAtlasDbCache(TestAtlasCache):
 
 
 class TestAtlasRamCache(TestAtlasCache):
-
     @cached_property
     def cache(self):
         return AtlasRamCache(MyDocument, MyDocument._get_collection())
@@ -139,7 +138,6 @@ class TestAtlasCache(TestAtlasCache):
     def setUp(self):
         super().setUp()
         self.collection = self.cache.get_collection_name(self.aggregations)
-
 
     def test_remove(self):
         self.doc.switch_db(self.db_alias)

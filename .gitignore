@@ -1,0 +1,12 @@
+.idea
+build
+dist
+*egg-info
+venv/
+*.exe
+__pycache__
+.vscode
+docs/_build/
+.tox
+.coverage
+coverage.xml

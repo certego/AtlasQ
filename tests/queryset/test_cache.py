@@ -1,8 +1,9 @@
 import datetime
+from functools import cached_property
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from mongoengine import Document, connect, fields
+from mongoengine import Document, connect, disconnect, fields
 from mongoengine.context_managers import switch_collection, switch_db
 
 from atlasq.queryset.cache import AtlasCache, AtlasDbCache, AtlasRamCache
@@ -18,12 +19,16 @@ class TestAtlasCache(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.aggregations = [{"mamma": "mia"}]
-        connect(db="test", host="test", connect=True)
+        connect("mongoenginetest",host="mongomock://localhost")
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        disconnect()
 
     def tearDown(self) -> None:
         self.cache.remove(self.aggregations)
 
-    @property
+    @cached_property
     def cache(self):
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -31,7 +36,6 @@ class TestAtlasCache(TestCase):
         MyDocument.objects.all().delete()
         self.db_alias = "default"
         self.key = self.cache._aggregations_to_key(self.aggregations)
-        self.collection = self.cache.get_collection_name(self.aggregations)
         self.doc = MyDocument(
             name="test.com",
             md5="d8cfbe774890e3b523ce584ce640a452",
@@ -40,9 +44,13 @@ class TestAtlasCache(TestCase):
 
 
 class TestAtlasDbCache(TestAtlasCache):
-    @property
+    @cached_property
     def cache(self):
         return AtlasDbCache(MyDocument, MyDocument._get_collection(), self.db_alias)
+
+    def setUp(self):
+        super().setUp()
+        self.collection = self.cache.get_collection_name(self.aggregations)
 
     def test_remove(self):
         self.doc.switch_db(self.db_alias)
@@ -85,7 +93,8 @@ class TestAtlasDbCache(TestAtlasCache):
 
 
 class TestAtlasRamCache(TestAtlasCache):
-    @property
+
+    @cached_property
     def cache(self):
         return AtlasRamCache(MyDocument, MyDocument._get_collection())
 
@@ -123,9 +132,14 @@ class TestAtlasRamCache(TestAtlasCache):
 
 
 class TestAtlasCache(TestAtlasCache):
-    @property
+    @cached_property
     def cache(self):
         return AtlasCache(MyDocument, MyDocument._get_collection(), self.db_alias)
+
+    def setUp(self):
+        super().setUp()
+        self.collection = self.cache.get_collection_name(self.aggregations)
+
 
     def test_remove(self):
         self.doc.switch_db(self.db_alias)

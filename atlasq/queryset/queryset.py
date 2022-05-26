@@ -33,7 +33,9 @@ class AtlasQuerySet(QuerySet):
     def clone(self) -> "AtlasQuerySet":
         return self._clone_into(
             self.__class__(
-                self._document, self._collection, self.cache._db_connection_alias
+                self._document,
+                self._collection,
+                self.cache._db_connection_alias,  # pylint: disable=protected-access
             )
         )
 
@@ -57,7 +59,9 @@ class AtlasQuerySet(QuerySet):
         self.projections: List[Dict] = []
         # we always have to retrieve at least the required fields of document, it is required by the cache
         self.must_fields_to_show = set(
-            k for k, v in self._document._fields.items() if v.required
+            k
+            for k, v in self._document._fields.items()
+            if v.required  # pylint: disable=protected-access
         )
         self.fields_to_show = set()
         self.order_by_fields = set()
@@ -85,10 +89,14 @@ class AtlasQuerySet(QuerySet):
         qs.cache_expiration = cache_expiration
         return qs
 
-    def __is_field__list(self, field: str) -> bool:
-        ListField = _import_class("ListField")
+    def _is_field__list(self, field: str) -> bool:
+        ListField = _import_class("ListField")  # pylint: disable=invalid-name
         field_parts = field.split(".")
-        field_instances = self._document._lookup_field(field_parts)
+        field_instances = (
+            self._document._lookup_field(  # pylint: disable=protected-access
+                field_parts
+            )
+        )
         return isinstance(field_instances[-1], ListField)
 
     def unwind(self, field: str):
@@ -104,7 +112,7 @@ class AtlasQuerySet(QuerySet):
     def sort_by_count(self, field: str):
         logger.debug(f"called sort_by_count for field {field}")
         qs = self.clone()
-        if qs.__is_field__list(field):
+        if qs._is_field__list(field):  # pylint: disable=protected-access
             qs.aggregations = qs.unwind(field).aggregations
         qs.aggregations.append({"$sortByCount": f"${field}"})
         return qs
@@ -184,7 +192,7 @@ class AtlasQuerySet(QuerySet):
 
     def scalar(self, *fields):
         qs = self.clone()
-        objects = qs._execute()
+        objects = qs._execute()  # pylint: disable=protected-access
         my_objs = []
         for obj in objects:
             my_objs.append(tuple(obj[k] for k in fields))
@@ -199,12 +207,11 @@ class AtlasQuerySet(QuerySet):
                 raise NotImplementedError("Slicing with a start index is not supported")
             qs = self.clone()
             qs.projections.append({"$limit": key.stop})
-            return qs._execute()
-        elif isinstance(key, int):
+            return qs._execute()  # pylint: disable=protected-access
+        if isinstance(key, int):
             objects = self._execute()
             return list(objects)[key]
-        else:
-            raise TypeError(f"{type(key)} is not a valid key")
+        raise TypeError(f"{type(key)} is not a valid key")
 
     def only(self, *fields):
         qs = self.clone()
@@ -229,7 +236,7 @@ class AtlasQuerySet(QuerySet):
             qs.aggregations.append({"$project": {"meta": "$$SEARCH_META"}})
         else:
             qs.aggregations.append({"$count": "count"})
-        cursor = qs._execute()
+        cursor = qs._execute()  # pylint: disable=protected-access
         try:
             count = next(cursor)
         except StopIteration:
@@ -263,10 +270,13 @@ class AtlasQuerySet(QuerySet):
         if not isinstance(pipeline, list):
             raise TypeError("Pipeline should be a list")
         qs.aggregations += pipeline
-        return qs._execute()
+        qs.aggregations += suppl_pipeline
+        return qs._execute()  # pylint: disable=protected-access
 
     def order_by(self, *keys):
         qs = super().order_by(*keys)
         qs.order_by_fields.update(keys)
-        qs.projections.append({"$sort": {key: value for key, value in qs._ordering}})
+        qs.projections.append(
+            {"$sort": dict(qs._ordering)}  # pylint: disable=protected-access
+        )
         return qs

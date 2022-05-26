@@ -14,17 +14,11 @@ logger = logging.getLogger(__name__)
 class _AtlasCache:
     class ExpiredError(Exception):
         def __init__(self, key):
-            self.message = f"Cache {key} expired"
-
-        def __str__(self):
-            return self.message
+            super().__init__(f"Cache {key} expired")
 
     class KeyError(KeyError):
         def __init__(self, key):
-            self.message = f"Cache {key} not found"
-
-        def __str__(self):
-            return self.message
+            super().__init__(f"Cache key {key} not found")
 
     def __init__(self, document: Document, collection: Collection, **kwargs):
         self._document = document
@@ -32,12 +26,12 @@ class _AtlasCache:
         self._max_minutes = 30
 
     def _aggregations_to_key(self, aggregations: List[Dict]) -> str:
-        m = hashlib.sha256()
+        digest = hashlib.sha256()
         for aggregation in aggregations:
-            m.update(
+            digest.update(
                 json.dumps(aggregation, sort_keys=True, default=str).encode("utf-8")
             )
-        return m.hexdigest()
+        return digest.hexdigest()
 
     def get(self, aggregations: List[Dict], force: bool = False) -> QuerySet:
 
@@ -65,28 +59,40 @@ class AtlasDbCache(_AtlasCache):
 
     def get_collection_name(self, aggregations: List[Dict]) -> str:
         key = self._aggregations_to_key(aggregations)
-        return f"{self._document._meta['collection']}_{key}"
+        return f"{self._document._meta['collection']}_{key}"  # pylint: disable=protected-access
 
     def get_collection_expiration(
         self, collection: Document
     ) -> Union[datetime.datetime, None]:
-        return collection._meta.get("expire_at", None)
+        return collection._meta.get(  # pylint: disable=protected-access
+            "expire_at", None
+        )
 
     def remove(self, aggregations: List[Dict]) -> None:
-        with switch_db(self._document, self._db_connection_alias) as OtherDbCollection:
+        with switch_db(
+            self._document, self._db_connection_alias
+        ) as OtherDbCollection:  # pylint: disable=invalid-name
             with switch_collection(
                 OtherDbCollection, self.get_collection_name(aggregations)
-            ) as Collection:
-                Collection.drop_collection()
-                if "expire_at" in Collection._meta:
-                    del Collection._meta["expire_at"]
+            ) as OtherCollection:  # pylint: disable=invalid-name
+                OtherCollection.drop_collection()
+                if (
+                    "expire_at"
+                    in OtherCollection._meta  # pylint: disable=protected-access
+                ):
+                    del OtherCollection._meta[  # pylint: disable=protected-access
+                        "expire_at"
+                    ]
 
     def get(self, aggregations: List[Dict], force: bool = False) -> QuerySet:
         key = self._aggregations_to_key(aggregations)
         collection = self.get_collection_name(aggregations)
-        with switch_db(self._document, self._db_connection_alias) as OtherDbCollection:
-            with switch_collection(OtherDbCollection, collection) as OtherCollection:
-                OtherCollection: Document
+        with switch_db(
+            self._document, self._db_connection_alias
+        ) as OtherDbCollection:  # pylint: disable=invalid-name
+            with switch_collection(
+                OtherDbCollection, collection
+            ) as OtherCollection:  # pylint: disable=invalid-name
                 expire_at = self.get_collection_expiration(OtherCollection)
                 if not expire_at:
                     logger.debug(f"Db Cache miss for {key}")
@@ -106,10 +112,13 @@ class AtlasDbCache(_AtlasCache):
     ) -> None:
         key = self._aggregations_to_key(aggregations)
         collection = self.get_collection_name(aggregations)
-        with switch_db(self._document, self._db_connection_alias) as OtherDbCollection:
-            with switch_collection(OtherDbCollection, collection) as OtherCollection:
-                OtherCollection: Document
-                OtherCollection._meta[
+        with switch_db(
+            self._document, self._db_connection_alias
+        ) as OtherDbCollection:  # pylint: disable=invalid-name
+            with switch_collection(
+                OtherDbCollection, collection
+            ) as OtherCollection:  # pylint: disable=invalid-name
+                OtherCollection._meta[  # pylint: disable=protected-access
                     "expire_at"
                 ] = datetime.datetime.now() + datetime.timedelta(minutes=max_minutes)
 
@@ -148,15 +157,6 @@ class AtlasRamCache(_AtlasCache):
 
 
 class AtlasCache(AtlasDbCache, AtlasRamCache):
-    def __init__(
-        self,
-        document: Document,
-        collection: Collection,
-        db_connection_alias: str,
-        **kwargs,
-    ):
-        super().__init__(document, collection, db_connection_alias, **kwargs)
-
     def remove(self, aggregations: List[Dict]) -> None:
         AtlasRamCache.remove(self, aggregations)
         AtlasDbCache.remove(self, aggregations)
@@ -172,10 +172,10 @@ class AtlasCache(AtlasDbCache, AtlasRamCache):
             # we need to copy the expiration time
             with switch_db(
                 self._document, self._db_connection_alias
-            ) as OtherDbCollection:
+            ) as OtherDbCollection:  # pylint: disable=invalid-name
                 with switch_collection(
                     OtherDbCollection, self.get_collection_name(aggregations)
-                ) as OtherCollection:
+                ) as OtherCollection:  # pylint: disable=invalid-name
                     expire_in = self.get_collection_expiration(OtherCollection)
             # we calculate the expiration time and round it to the nearest minute
             diff = expire_in - datetime.datetime.now()

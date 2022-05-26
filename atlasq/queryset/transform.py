@@ -112,11 +112,10 @@ class AtlasTransform:
             for i, key_part in enumerate(key_parts):
                 if key_part not in self.keywords:
                     continue
-                else:
-                    # the key_part is made of "field__subfield__keywords
-                    # meaning that the first time that we find a keyword, we have the entire path
-                    if not path:
-                        path = ".".join(key_parts[:i])
+                # the key_part is made of "field__subfield__keywords
+                # meaning that the first time that we find a keyword, we have the entire path
+                if not path:
+                    path = ".".join(key_parts[:i])
 
                 keyword = key_part
                 if keyword in self.not_converted:
@@ -130,7 +129,7 @@ class AtlasTransform:
 
                     other_aggregations.append(self.__exists(path, positive))
                     break
-                elif keyword in self.size_keywords:
+                if keyword in self.size_keywords:
                     # it must the last keyword, otherwise we do not support it
                     if i != len(key_parts) - 1:
                         raise NotImplementedError(
@@ -139,13 +138,13 @@ class AtlasTransform:
                     positive = to_go == 1
                     other_aggregations.append(self.__size(path, value, positive))
                     break
-                elif keyword in self.range_keywords:
+                if keyword in self.range_keywords:
                     obj = self.__range(path, value, keyword)
                     break
-                elif keyword in self.equals_keywords:
+                if keyword in self.equals_keywords:
                     obj = self.__equals(path, value)
                     break
-                elif keyword in self.text_keywords:
+                if keyword in self.text_keywords:
                     obj = self.__text(path, value)
                     break
             else:
@@ -158,6 +157,9 @@ class AtlasTransform:
 
             if obj:
                 logger.debug(obj)
-                affirmative.append(obj) if to_go == 1 else negative.append(obj)
+            if to_go == 1:
+                affirmative.append(obj)
+            else:
+                negative.append(obj)
 
         return affirmative, negative, other_aggregations

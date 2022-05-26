@@ -39,7 +39,7 @@ jobs:
 
       - name: Pylint
         run: |
-          pylint .
+          pylint atlasq
 
       - name: Isort
         run: |

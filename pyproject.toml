@@ -1,0 +1,11 @@
+[tool.black]
+exclude = '''
+/(
+    venv
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+use_parentheses = true

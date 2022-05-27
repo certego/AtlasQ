@@ -106,10 +106,7 @@ class AtlasTransform:
             raise NotImplementedError(f"Size search for {path} must be 0")
         if operator not in ["eq", "ne"]:
             raise NotImplementedError(f"Size search for {path} must be eq or ne")
-        if operator == "eq":
-            empty = True
-        else:
-            empty = False
+        empty = operator == "eq"
         return self._exists(path, empty)
 
     def transform(self) -> Tuple[List[Dict], List[Dict], List[Dict]]:

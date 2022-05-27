@@ -1,12 +1,12 @@
 import datetime
 from functools import cached_property
-from unittest import TestCase
 from unittest.mock import MagicMock
 
-from mongoengine import Document, connect, disconnect, fields
+from mongoengine import Document, fields
 from mongoengine.context_managers import switch_collection, switch_db
 
 from atlasq.queryset.cache import AtlasCache, AtlasDbCache, AtlasRamCache
+from tests.test_base import TestBaseCase
 
 
 class MyDocument(Document):
@@ -15,15 +15,11 @@ class MyDocument(Document):
     classification = fields.StringField(required=True)
 
 
-class TestAtlasCache(TestCase):
+class TestAtlasCache(TestBaseCase):
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         cls.aggregations = [{"mamma": "mia"}]
-        connect("mongoenginetest", host="mongomock://localhost")
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        disconnect()
 
     def tearDown(self) -> None:
         self.cache.remove(self.aggregations)

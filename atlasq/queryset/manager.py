@@ -12,7 +12,7 @@ class AtlasManager(QuerySetManager):
 
     @property
     def default(self):
-        if self.index:
+        if self._index:
             return AtlasQuerySet
         res = super().default
         res.cache_expire_in = lambda x, y: x
@@ -21,12 +21,14 @@ class AtlasManager(QuerySetManager):
         )
         return res
 
-    def __init__(self, index: Union[str, None]):
+    def __init__(self, index: Union[str, None], cache_db_alias: str):
         super().__init__()
-        self.index = index
+        self._index = index
+        self._cache_db_alias = cache_db_alias
 
     def __get__(self, instance, owner):
         queryset = super().__get__(instance, owner)
         if isinstance(queryset, AtlasQuerySet):
-            queryset.index = self.index
+            queryset.index = self._index
+            queryset.cache = self._cache_db_alias
         return queryset

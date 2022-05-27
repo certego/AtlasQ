@@ -17,7 +17,7 @@ class AtlasQ(Q):
     def operation(self):
         return self.AND
 
-    def to_query(self, document):
+    def to_query(self, document) -> Tuple[Dict, List[Dict]]:
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
         query = query.accept(AtlasQueryCompilerVisitor(document))
@@ -33,6 +33,9 @@ class AtlasQ(Q):
 
 
 class AtlasQCombination(QCombination):
+    def __bool__(self):
+        return any(bool(child) for child in self.children)
+
     def _combine(self, other, operation):
         logger.debug(f"_combine {self.__class__.__name__} {other}, {operation}")
         result = super()._combine(other, operation)

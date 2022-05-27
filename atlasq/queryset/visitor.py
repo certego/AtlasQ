@@ -23,19 +23,41 @@ class AtlasSimplificationVisitor(SimplificationVisitor):
 
 
 class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
-    def visit_combination(self, combination) -> Tuple[Dict, List[Dict]]:
-        filters = []
+    def _visit_combination_and(self, combination) -> Tuple[Dict, List[Dict]]:
+        affirmatives = []
+        negatives = []
         aggregations = []
-        for child in combination.children:
-            if child[0]:
-                filters.append(child[0])
-            aggregations.extend(child[1])
 
-        if combination.operation == combination.OR:
-            return {
-                "compound": {"should": filters, "minimumShouldMatch": 1}
-            }, aggregations
-        return {"compound": {"filter": filters}}, aggregations
+        for child in combination.children:
+            filters, child_aggregations = child
+            if "compound" in filters:
+                if "filter" in filters["compound"]:
+                    affirmatives.extend(filters["compound"]["filter"])
+                if "mustNot" in filters["compound"]:
+                    negatives.extend(filters["compound"]["mustNot"])
+            aggregations.extend(child_aggregations)
+        result = {"compound": {}}
+        if affirmatives:
+            result["compound"]["filter"] = affirmatives
+        if negatives:
+            result["compound"]["mustNot"] = negatives
+        return result, aggregations
+
+    def _visit_combination_or(self, combination) -> Tuple[Dict, List[Dict]]:
+        aggregations = []
+        children_results = []
+        for child in combination.children:
+            filters, aggregations = child
+            children_results.append(filters)
+            aggregations.extend(aggregations)
+        return {
+            "compound": {"should": children_results, "minimumShouldMatch": 1}
+        }, aggregations
+
+    def visit_combination(self, combination) -> Tuple[Dict, List[Dict]]:
+        if combination.operation == combination.AND:
+            return self._visit_combination_and(combination)
+        return self._visit_combination_or(combination)
 
     def visit_query(self, query) -> Tuple[Dict, List[Dict]]:
         from atlasq.queryset.transform import AtlasTransform

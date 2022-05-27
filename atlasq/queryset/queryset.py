@@ -22,7 +22,7 @@ class AtlasQuerySet(QuerySet):
         "order_by_fields",
         "count_objects",
         "cache_expiration",
-        "cache",
+        "_cache",
         "alias",
     )
     order_mapping = {
@@ -50,9 +50,7 @@ class AtlasQuerySet(QuerySet):
     def __repr__(self):
         return repr(self._execute())
 
-    def __init__(
-        self, document, collection, cache_alias: str, cache_expiration: int = 0
-    ):
+    def __init__(self, document, collection, cache_expiration: int = 0):
         super().__init__(document, collection)
         self.filters: List[Dict] = []
         self.aggregations: List[Dict] = []
@@ -66,11 +64,21 @@ class AtlasQuerySet(QuerySet):
         self.fields_to_show = set()
         self.order_by_fields = set()
         self.count_objects: bool = False
-        self.cache = AtlasCache(self._document, self._collection, cache_alias)
+
+        self._cache = None
+
         self.cache_expiration = cache_expiration
 
         self._index = None
         self.alias = "default"
+
+    @property
+    def cache(self) -> AtlasCache:
+        return self._cache
+
+    @cache.setter
+    def cache(self, alias: str):
+        self._cache = AtlasCache(self._document, self._collection, alias)
 
     @property
     def index(self):

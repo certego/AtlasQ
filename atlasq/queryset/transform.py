@@ -1,6 +1,6 @@
 import datetime
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +50,10 @@ class AtlasTransform:
         "match",
     ]
 
-    def __init__(self, altas_query):
-        self.altas_query = altas_query
+    def __init__(self, atlas_query):
+        self.atlas_query = atlas_query
 
-    def __exists(self, path: str, positive: bool) -> Dict:
+    def _exists(self, path: str, empty: bool) -> Dict:
         # false True == true == eq
         # true False == true == eq
         # false false == false == ne
@@ -62,19 +62,29 @@ class AtlasTransform:
             "$match": {
                 path: {
                     "$exists": True,
-                    "$eq" if positive else "$ne": [None, [], ""],
+                    "$eq" if empty else "$ne": [None, [], ""],
                 }
             }
         }
 
-    def __range(self, path: str, value: Any, keyword: str) -> Dict:
-        if value is None:
-            return {}
+    def _range(
+        self, path: str, value: Union[int, datetime.datetime], keyword: str
+    ) -> Dict:
+        if keyword not in self.range_keywords:
+            raise ValueError(
+                f"Range search for {path} must be {self.range_keywords}, not {keyword}"
+            )
         if isinstance(value, datetime.datetime):
             value = value.replace(minute=0, second=0, microsecond=0)
+        elif isinstance(value, int):
+            pass
+        else:
+            raise ValueError(
+                f"Range search for {path} must have a value of datetime or integer"
+            )
         return {"range": {"path": path, keyword: value}}
 
-    def __equals(self, path: str, value: Any) -> Dict:
+    def _equals(self, path: str, value: Any) -> Dict:
         return {
             "equals": {
                 "path": path,
@@ -82,26 +92,32 @@ class AtlasTransform:
             }
         }
 
-    def __text(self, path: str, value: Any) -> Dict:
+    def _text(self, path: str, value: Any) -> Dict:
         if not value:
             raise ValueError(f"Text search for {path} cannot be {value}")
         return {
             "text": {"query": value, "path": path},
         }
 
-    def __size(self, path: str, value: int, positive: bool) -> Dict:
+    def _size(self, path: str, value: int, operator: str) -> Dict:
         if not isinstance(value, int):
             raise ValueError(f"Size search for {path} must be an int")
         if value != 0:
             raise NotImplementedError(f"Size search for {path} must be 0")
-        return self.__exists(path, positive)
+        if operator not in ["eq", "ne"]:
+            raise NotImplementedError(f"Size search for {path} must be eq or ne")
+        if operator == "eq":
+            empty = True
+        else:
+            empty = False
+        return self._exists(path, empty)
 
     def transform(self) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         other_aggregations = []
         affirmative = []
         negative = []
 
-        for key, value in self.altas_query.items():
+        for key, value in self.atlas_query.items():
             # if to_go is positive, we add the element in the positive list
             # if to_go is negative, we add the element in the negative list
             to_go = 1
@@ -125,9 +141,9 @@ class AtlasTransform:
 
                 if keyword in self.exists_keywords:
 
-                    positive = (to_go == 1) ^ value
+                    empty = (to_go == 1) ^ value
 
-                    other_aggregations.append(self.__exists(path, positive))
+                    other_aggregations.append(self._exists(path, empty))
                     break
                 if keyword in self.size_keywords:
                     # it must the last keyword, otherwise we do not support it
@@ -135,31 +151,32 @@ class AtlasTransform:
                         raise NotImplementedError(
                             f"Keyword {keyword} not implemented yet"
                         )
-                    positive = to_go == 1
-                    other_aggregations.append(self.__size(path, value, positive))
+                    other_aggregations.append(
+                        self._size(path, value, "eq" if to_go == 1 else "ne")
+                    )
                     break
                 if keyword in self.range_keywords:
-                    obj = self.__range(path, value, keyword)
+                    obj = self._range(path, value, keyword)
                     break
                 if keyword in self.equals_keywords:
-                    obj = self.__equals(path, value)
+                    obj = self._equals(path, value)
                     break
                 if keyword in self.text_keywords:
-                    obj = self.__text(path, value)
+                    obj = self._text(path, value)
                     break
             else:
                 if not path:
                     path = ".".join(key_parts)
                 if isinstance(value, bool):
-                    obj = self.__equals(path, value)
+                    obj = self._equals(path, value)
                 else:
-                    obj = self.__text(path, value)
+                    obj = self._text(path, value)
 
             if obj:
                 logger.debug(obj)
-            if to_go == 1:
-                affirmative.append(obj)
-            else:
-                negative.append(obj)
+                if to_go == 1:
+                    affirmative.append(obj)
+                else:
+                    negative.append(obj)
 
         return affirmative, negative, other_aggregations

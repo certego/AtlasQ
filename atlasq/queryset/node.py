@@ -17,7 +17,9 @@ class AtlasQ(Q):
     def operation(self):
         return self.AND
 
-    def to_query(self, document) -> Tuple[Dict, List[Dict]]:
+    def to_query(self, document, use_atlas: bool = False) -> Tuple[Dict, List[Dict]]:
+        if not use_atlas:
+            return super().to_query(document)
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
         query = query.accept(AtlasQueryCompilerVisitor(document))
@@ -41,7 +43,9 @@ class AtlasQCombination(QCombination):
         result = super()._combine(other, operation)
         return AtlasQCombination(result.operation, result.children)
 
-    def to_query(self, document) -> Tuple[Dict, List[Dict]]:
+    def to_query(self, document, use_alias: bool = False) -> Tuple[Dict, List[Dict]]:
+        if not use_alias:
+            return super().to_query(document)
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
         query = query.accept(AtlasQueryCompilerVisitor(document))

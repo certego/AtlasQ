@@ -263,7 +263,7 @@ class AtlasQuerySet(QuerySet):
             ):
                 raise TypeError(f"Please use Atlasq not {type(q_obj)}")
             q &= q_obj
-        text_search, aggregations = q.to_query(self._document)
+        text_search, aggregations = q.to_query(self._document, use_atlas=True)
         qs = self.clone()
         filters = (
             [{"$search": {"index": qs.index, "compound": {"filter": [text_search]}}}]

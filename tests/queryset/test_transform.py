@@ -1,12 +1,28 @@
 import datetime
 import json
 
+from mongoengine import Document, fields
+
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.transform import AtlasTransform
 from tests.test_base import TestBaseCase
 
 
 class TestTransformSteps(TestBaseCase):
+    def test__queryset_value(self):
+        class MyDoc(Document):
+            field = fields.StringField()
+
+        MyDoc.objects.create(field="aaa")
+        objects = MyDoc.objects.all().values_list("field")
+
+        q = AtlasQ(f=objects)
+        positive, negative, aggregations = AtlasTransform(q.query).transform()
+
+        self.assertEqual(positive, [{"text": {"query": ["aaa"], "path": "f"}}])
+        self.assertEqual(negative, [])
+        self.assertEqual(aggregations, [])
+
     def test__exists_empty(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query)

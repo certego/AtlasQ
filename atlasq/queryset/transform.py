@@ -2,6 +2,8 @@ import datetime
 import logging
 from typing import Any, Dict, List, Tuple, Union
 
+from mongoengine import QuerySet
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,7 +120,11 @@ class AtlasTransform:
             # if to_go is positive, we add the element in the positive list
             # if to_go is negative, we add the element in the negative list
             to_go = 1
-
+            if isinstance(value, QuerySet):
+                logger.debug(
+                    "Casting queryset to list, otherwise the aggregation will fail"
+                )
+                value = list(value)
             key_parts = key.split("__")
             obj = None
             path = ""

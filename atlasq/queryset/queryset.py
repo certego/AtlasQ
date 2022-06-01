@@ -35,7 +35,7 @@ class AtlasQuerySet(QuerySet):
             self.__class__(
                 self._document,
                 self._collection,
-                self.cache._db_connection_alias,  # pylint: disable=protected-access
+                self.cache_expiration,  # pylint: disable=protected-access
             )
         )
 

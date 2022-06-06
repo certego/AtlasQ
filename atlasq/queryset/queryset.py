@@ -88,9 +88,6 @@ class AtlasQuerySet(QuerySet):
     def index(self, value):
         self._index = value
 
-    def __next__(self):
-        return next(self._execute())
-
     def __iter__(self):
         objects = self._execute()
         return iter(objects)
@@ -176,8 +173,6 @@ class AtlasQuerySet(QuerySet):
         return objects
 
     def _execute(self):
-        if self._cursor:
-            return self._cursor
         logger.debug(
             json.dumps(
                 self.filters + self.projections + self.aggregations,
@@ -201,8 +196,7 @@ class AtlasQuerySet(QuerySet):
         # we are sure that at this point we have Mongoengine Documents,
         # meaning that we can safely call the aggregate function
         # if we have an aggregation to do, and let mongoengine manage that
-        self._cursor_obj = objects.aggregate(self.aggregations) if self.aggregations else objects
-        return self._cursor_obj
+        return objects.aggregate(self.aggregations) if self.aggregations else objects
 
     def scalar(self, *fields):
         qs = self.clone()

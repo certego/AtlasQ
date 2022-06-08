@@ -253,8 +253,9 @@ class AtlasQuerySet(QuerySet):
             logger.debug(count)
             if qs.filters:
                 self._len = count["meta"]["count"]["total"]
+                return self._len
             self._len = count["count"]
-        return self._len
+            return self._len
 
     def filter(self, q_obj=None, **query):  # pylint: disable=arguments-differ
         q = AtlasQ(**query)
@@ -273,6 +274,19 @@ class AtlasQuerySet(QuerySet):
         )
         qs.filters = filters + aggregations + qs.filters
         return qs
+
+    def get(self, *q_objs, **query):
+        qs = self.clone()
+        qs = qs.filter(q_objs, **query).limit(2)
+        count = qs.count()
+        if count == 0:
+            msg = f"{qs._document._class_name} matching query does not exist."
+            raise qs._document.DoesNotExist(msg)
+        elif count == 2:
+            raise qs._document.MultipleObjectsReturned(
+                "2 or more items returned, instead of 1"
+            )
+        return qs[0]
 
     def aggregate(self, pipeline: List[Dict], *suppl_pipeline, **kwargs):
         qs = self.clone()

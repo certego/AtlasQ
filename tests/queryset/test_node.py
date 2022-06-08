@@ -25,7 +25,7 @@ class TestAtlasQ(TestBaseCase):
             name = fields.StringField()
 
         q = AtlasQ(name="test")
-        res = q.to_query(MyDocument)
+        res = q.to_query(MyDocument, True)
         self.assertIsInstance(res, tuple)
         self.assertEqual(2, len(res))
         filters, aggregations = res

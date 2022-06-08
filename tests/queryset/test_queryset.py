@@ -1,6 +1,8 @@
-from unittest import skip
+from unittest import skip, mock
+from unittest.mock import patch
 
 from mongoengine import Document, ListField, StringField
+from mongomock import command_cursor
 from mongomock.command_cursor import CommandCursor
 
 from atlasq.queryset.node import AtlasQ
@@ -71,9 +73,9 @@ class TestQuerySet(TestBaseCase):
         self.assertNotEqual(self.base, clone)
         for key, value in self.base.__dict__.items():
             if (
-                isinstance(value, str)
-                or isinstance(value, list)
-                or isinstance(value, int)
+                    isinstance(value, str)
+                    or isinstance(value, list)
+                    or isinstance(value, int)
             ):
                 self.assertEqual(value, clone.__dict__[key])
 
@@ -149,15 +151,21 @@ class TestQuerySet(TestBaseCase):
         result = next(cursor)
         self.assertEqual(result["_id"], self.obs.id)
 
-    @skip("To mock")
     def test_filter(self):
-        objects = self.base.filter(classification="domain")
-        self.assertEqual(len(objects), 0)
+        with patch("mongomock.aggregate.process_pipeline",
+                   side_effect=[command_cursor.CommandCursor([])]):
+            objects = self.base.filter(classification="domain")
+            self.assertEqual(len(objects), 0)
         self.obs.save()
-        objects = self.base.filter(classification="domain")
-        self.assertEqual(len(objects), 1)
-        objects = self.base.filter(AtlasQ(classification="domain"))
-        self.assertEqual(len(objects), 1)
+        with patch("mongomock.aggregate.process_pipeline",
+                   side_effect=[command_cursor.CommandCursor([{"_id": self.obs.id, "name": self.obs.name}])]):
+            objects = self.base.filter(classification="domain")
+            self.assertEqual(len(objects), 1)
+        with patch("mongomock.aggregate.process_pipeline",
+                   side_effect=[command_cursor.CommandCursor([{"_id": self.obs.id, "name": self.obs.name}])]):
+
+            objects = self.base.filter(AtlasQ(classification="domain"))
+            self.assertEqual(len(objects), 1)
 
     @skip("To mock")
     def test_filter_cache(self):
@@ -169,3 +177,31 @@ class TestQuerySet(TestBaseCase):
         self.assertEqual(len(objects), 1)
         objects = base.filter(classification="domain")
         self.assertEqual(len(objects), 0)
+
+    def test_get(self):
+        with patch("mongomock.aggregate.process_pipeline", side_effect=[command_cursor.CommandCursor([{"meta": {"count": {"total": 0}}}]), command_cursor.CommandCursor([])]):
+            with self.assertRaises(MyDocument.DoesNotExist):
+                self.base.get(classification="domain")
+        obs = MyDocument.objects.create(
+            name="test1.com",
+            md5="d8cfbe774890e3b523ce584ce640a452",
+            classification="domain",
+            related_threat=["phishing"],
+        )
+        with patch("mongomock.aggregate.process_pipeline", side_effect=[command_cursor.CommandCursor([{"meta": {"count": {"total": 1}}}]), command_cursor.CommandCursor([{"_id": obs.id, "name": obs.name}])]):
+            self.assertEqual(obs, self.base.get(classifcation="domain"))
+        obs2 = MyDocument.objects.create(
+            name="test2.com",
+            md5="d8cfbe774890e3b523ce584ce640a452",
+            classification="domain",
+            related_threat=["phishing"],
+        )
+        with patch("mongomock.aggregate.process_pipeline",
+                   side_effect=[command_cursor.CommandCursor([{"meta": {"count": {"total": 2}}}]),
+                                command_cursor.CommandCursor([{"_id": obs.id, "name": obs.name}, {"_id": obs2.id, "name": obs2.name}])]):
+
+            with self.assertRaises(MyDocument.MultipleObjectsReturned):
+                self.base.get(classification="domain")
+
+
+

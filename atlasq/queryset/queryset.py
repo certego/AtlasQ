@@ -237,6 +237,7 @@ class AtlasQuerySet(QuerySet):
 
     def count(self, with_limit_and_skip=False):
         qs = self.clone()
+        qs.count_objects = True
         if qs.filters:
             qs.filters[0]["$search"]["count"] = {"type": "total"}
             # this should not go in the projections because it is not a field of the document

@@ -5,7 +5,6 @@ from mongoengine import Document, ListField, StringField
 from mongomock import command_cursor
 from mongomock.command_cursor import CommandCursor
 
-from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.queryset import AtlasQuerySet
 from tests.test_base import TestBaseCase
@@ -25,7 +24,7 @@ class TestQuerySet(TestBaseCase):
         self.base = AtlasQuerySet(
             MyDocument, MyDocument._get_collection(), cache_expiration=0
         )
-        self.base.index = AtlasIndex("test")
+        self.base.index = "test"
         self.base.cache = "default"
         self.obs = MyDocument(
             name="test.com",

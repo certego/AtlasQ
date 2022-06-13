@@ -86,8 +86,13 @@ class AtlasQuerySet(QuerySet):
         return self._index.index
 
     @index.setter
-    def index(self, value):
-        self._index = AtlasIndex(value)
+    def index(self, value: Union[str, AtlasIndex]):
+        if isinstance(value, str):
+            self._index = AtlasIndex(value)
+        elif isinstance(value, AtlasIndex):
+            self._index = value
+        else:
+            raise TypeError("Index should be a string or an AtlasIndex")
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self.alias

@@ -96,7 +96,9 @@ class AtlasQuerySet(QuerySet):
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self.alias
-        collection_name = self._document._get_collection_name()
+        collection_name = (
+            self._document._get_collection_name()  # pylint: disable=protected-access
+        )
         self._index.ensure_index_exists(
             user, password, group_id, cluster_name, db_name, collection_name
         )
@@ -268,7 +270,7 @@ class AtlasQuerySet(QuerySet):
                 self._len = count["meta"]["count"]["total"]
                 return self._len
             self._len = count["count"]
-            return self._len
+        return self._len
 
     def filter(self, q_obj=None, **query):  # pylint: disable=arguments-differ
         q = AtlasQ(**query)
@@ -293,10 +295,10 @@ class AtlasQuerySet(QuerySet):
         qs = qs.filter(q_objs, **query).limit(2)
         count = qs.count()
         if count == 0:
-            msg = f"{qs._document._class_name} matching query does not exist."
-            raise qs._document.DoesNotExist(msg)
-        elif count == 2:
-            raise qs._document.MultipleObjectsReturned(
+            msg = f"{qs._document._class_name} matching query does not exist."  # pylint: disable=protected-access
+            raise qs._document.DoesNotExist(msg)  # pylint: disable=protected-access
+        if count == 2:
+            raise qs._document.MultipleObjectsReturned(  # pylint: disable=protected-access
                 "2 or more items returned, instead of 1"
             )
         return qs[0]

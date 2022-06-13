@@ -42,18 +42,18 @@ class AtlasIndex:
             DATABASE_NAME=db_name,
             COLLECTION_NAME=collection_name,
         )
-        r = requests.get(url, auth=HTTPDigestAuth(user, password))
-        r.raise_for_status()
-        index_results = r.json()
+        response = requests.get(url, auth=HTTPDigestAuth(user, password))
+        response.raise_for_status()
+        index_results = response.json()
         for index_result in index_results:
             if index_result["name"] == self.index:
                 self._indexed_fields = list(index_result["mappings"]["fields"].keys())
                 self.ensured = True
-                return True
+                break
         else:
             self.ensured = False
             self._indexed_fields.clear()
-            return False
+        return self.ensured
 
     def ensure_keyword_is_indexed(self, keyword: str):
         if not self.ensured:

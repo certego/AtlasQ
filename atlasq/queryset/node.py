@@ -18,7 +18,7 @@ class AtlasQ(Q):
     def operation(self):
         return self.AND
 
-    def to_query(
+    def to_query(  # pylint: disable=arguments-differ
         self, document, atlas_index: Union[None, AtlasIndex] = None
     ) -> Tuple[Dict, List[Dict]]:
         if AtlasIndex is None:
@@ -46,7 +46,7 @@ class AtlasQCombination(QCombination):
         result = super()._combine(other, operation)
         return AtlasQCombination(result.operation, result.children)
 
-    def to_query(
+    def to_query(  # pylint: disable=arguments-differ
         self, document, atlas_index: Union[None, AtlasIndex] = None
     ) -> Tuple[Dict, List[Dict]]:
         if AtlasIndex is None:

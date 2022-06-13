@@ -24,6 +24,7 @@ class TestQuerySet(TestBaseCase):
         self.base = AtlasQuerySet(
             MyDocument, MyDocument._get_collection(), cache_expiration=0
         )
+        self.base.index = "test"
         self.base.cache = "default"
         self.obs = MyDocument(
             name="test.com",

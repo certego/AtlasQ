@@ -1,12 +1,13 @@
 import copy
 import json
 import logging
-from typing import Dict, List
+from typing import Dict, List, Union
 
-from mongoengine import Q, QuerySet
+from mongoengine import DEFAULT_CONNECTION_NAME, Q, QuerySet
 from mongoengine.common import _import_class
 
 from atlasq.queryset.cache import AtlasCache
+from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ, AtlasQCombination
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ class AtlasQuerySet(QuerySet):
         "filters",
         "aggregations",
         "projections",
-        "index",
+        "_index",
         "fields_to_show",
         "order_by_fields",
         "count_objects",
@@ -69,8 +70,8 @@ class AtlasQuerySet(QuerySet):
 
         self.cache_expiration = cache_expiration
 
-        self._index = None
-        self.alias = "default"
+        self._index: Union[AtlasIndex, None] = None
+        self.alias = document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
 
     @property
     def cache(self) -> AtlasCache:
@@ -82,11 +83,25 @@ class AtlasQuerySet(QuerySet):
 
     @property
     def index(self):
-        return self._index
+        return self._index.index
 
     @index.setter
-    def index(self, value):
-        self._index = value
+    def index(self, value: Union[str, AtlasIndex]):
+        if isinstance(value, str):
+            self._index = AtlasIndex(value)
+        elif isinstance(value, AtlasIndex):
+            self._index = value
+        else:
+            raise TypeError("Index should be a string or an AtlasIndex")
+
+    def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
+        db_name = self.alias
+        collection_name = (
+            self._document._get_collection_name()  # pylint: disable=protected-access
+        )
+        self._index.ensure_index_exists(
+            user, password, group_id, cluster_name, db_name, collection_name
+        )
 
     def __iter__(self):
         objects = self._execute()
@@ -255,7 +270,7 @@ class AtlasQuerySet(QuerySet):
                 self._len = count["meta"]["count"]["total"]
                 return self._len
             self._len = count["count"]
-            return self._len
+        return self._len
 
     def filter(self, q_obj=None, **query):  # pylint: disable=arguments-differ
         q = AtlasQ(**query)
@@ -265,7 +280,7 @@ class AtlasQuerySet(QuerySet):
             ):
                 raise TypeError(f"Please use Atlasq not {type(q_obj)}")
             q &= q_obj
-        text_search, aggregations = q.to_query(self._document, use_atlas=True)
+        text_search, aggregations = q.to_query(self._document, self._index)
         qs = self.clone()
         filters = (
             [{"$search": {"index": qs.index, "compound": {"filter": [text_search]}}}]
@@ -280,10 +295,10 @@ class AtlasQuerySet(QuerySet):
         qs = qs.filter(q_objs, **query).limit(2)
         count = qs.count()
         if count == 0:
-            msg = f"{qs._document._class_name} matching query does not exist."
-            raise qs._document.DoesNotExist(msg)
-        elif count == 2:
-            raise qs._document.MultipleObjectsReturned(
+            msg = f"{qs._document._class_name} matching query does not exist."  # pylint: disable=protected-access
+            raise qs._document.DoesNotExist(msg)  # pylint: disable=protected-access
+        if count == 2:
+            raise qs._document.MultipleObjectsReturned(  # pylint: disable=protected-access
                 "2 or more items returned, instead of 1"
             )
         return qs[0]

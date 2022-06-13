@@ -20,13 +20,20 @@ Unfortunately, our knowledge is limited, so here we go. If you find a solution t
 The main idea, is that the `filter` should work like an `aggregation`. 
 For doing so, and with keeping the compatibility on how MongoEngine works (i.e. the filter should return a queryset of `Document`) we had to do some work.  
 Calling `.aggregate` instead has to work as MongoEngine expect, meaning a list of dictionaries. 
-
+#### Features
+##### Cache
 To complicate things, we even decided to add a cache!
 The issue there is that we do query on a large collection, and the query is composed of many clauses, meaning that
 the query could take 2/3 minutes to have a result. The second constraint is that the result of this query does not change rapidly 
 (or at least not the `filtering` part). If the cache is enabled, we save the objects retrieved in a new temporary collection
 and future queries that checks the same parameters, will retrieve the documents from this new collection.
 
+##### Validation
+We also decided to have, optionally, a validation of the index.
+Two things are checked:
+- The index actually exists (If you query a non-existing index, Atlas as default behaviour will not raise any error).
+- The fields that you are querying are actually indexed(If you query a field that is not indexed, Atlas as default behaviour will not raise any error, and will return an empty list).
+To make these check, you need to call the function `ensure_index` on the queryset:
 
 
 ## Usage

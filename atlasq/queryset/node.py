@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Union
 from mongoengine import Q
 from mongoengine.queryset.visitor import QCombination
 
+from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.visitor import (
     AtlasQueryCompilerVisitor,
     AtlasSimplificationVisitor,
@@ -17,12 +18,14 @@ class AtlasQ(Q):
     def operation(self):
         return self.AND
 
-    def to_query(self, document, use_atlas: bool = False) -> Tuple[Dict, List[Dict]]:
-        if not use_atlas:
+    def to_query(
+        self, document, atlas_index: Union[None, AtlasIndex] = None
+    ) -> Tuple[Dict, List[Dict]]:
+        if AtlasIndex is None:
             return super().to_query(document)
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
-        query = query.accept(AtlasQueryCompilerVisitor(document))
+        query = query.accept(AtlasQueryCompilerVisitor(document, atlas_index))
         return query
 
     def _combine(self, other, operation) -> Union["AtlasQ", "AtlasQCombination"]:
@@ -43,12 +46,14 @@ class AtlasQCombination(QCombination):
         result = super()._combine(other, operation)
         return AtlasQCombination(result.operation, result.children)
 
-    def to_query(self, document, use_alias: bool = False) -> Tuple[Dict, List[Dict]]:
-        if not use_alias:
+    def to_query(
+        self, document, atlas_index: Union[None, AtlasIndex] = None
+    ) -> Tuple[Dict, List[Dict]]:
+        if AtlasIndex is None:
             return super().to_query(document)
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
-        query = query.accept(AtlasQueryCompilerVisitor(document))
+        query = query.accept(AtlasQueryCompilerVisitor(document, atlas_index))
         return query
 
     def accept(self, visitor):

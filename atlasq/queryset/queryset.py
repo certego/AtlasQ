@@ -1,12 +1,13 @@
 import copy
 import json
 import logging
-from typing import Dict, List
+from typing import Dict, List, Union
 
-from mongoengine import Q, QuerySet
+from mongoengine import DEFAULT_CONNECTION_NAME, Q, QuerySet
 from mongoengine.common import _import_class
 
 from atlasq.queryset.cache import AtlasCache
+from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ, AtlasQCombination
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ class AtlasQuerySet(QuerySet):
         "filters",
         "aggregations",
         "projections",
-        "index",
+        "_index",
         "fields_to_show",
         "order_by_fields",
         "count_objects",
@@ -69,8 +70,8 @@ class AtlasQuerySet(QuerySet):
 
         self.cache_expiration = cache_expiration
 
-        self._index = None
-        self.alias = "default"
+        self._index: Union[AtlasIndex, None] = None
+        self.alias = document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
 
     @property
     def cache(self) -> AtlasCache:
@@ -82,11 +83,18 @@ class AtlasQuerySet(QuerySet):
 
     @property
     def index(self):
-        return self._index
+        return self._index.index
 
     @index.setter
     def index(self, value):
-        self._index = value
+        self._index = AtlasIndex(value)
+
+    def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
+        db_name = self.alias
+        collection_name = self._document._get_collection_name()
+        self._index.ensure_index_exists(
+            user, password, group_id, cluster_name, db_name, collection_name
+        )
 
     def __iter__(self):
         objects = self._execute()
@@ -265,7 +273,7 @@ class AtlasQuerySet(QuerySet):
             ):
                 raise TypeError(f"Please use Atlasq not {type(q_obj)}")
             q &= q_obj
-        text_search, aggregations = q.to_query(self._document, use_atlas=True)
+        text_search, aggregations = q.to_query(self._document, self._index)
         qs = self.clone()
         filters = (
             [{"$search": {"index": qs.index, "compound": {"filter": [text_search]}}}]

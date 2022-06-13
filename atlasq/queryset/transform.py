@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Tuple, Union
 
 from mongoengine import QuerySet
 
+from atlasq.queryset.index import AtlasIndex
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,7 +113,14 @@ class AtlasTransform:
         empty = operator == "eq"
         return self._exists(path, empty)
 
-    def transform(self) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+    def _ensure_keyword_is_indexed(self, atlas_index: AtlasIndex, keyword: str) -> None:
+        if atlas_index.ensured:
+            if not atlas_index.ensure_keyword_is_indexed(keyword):
+                raise ValueError(
+                    f"The keyword {keyword} is not indexed in {atlas_index.index}"
+                )
+
+    def transform(self, atlas_index) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         other_aggregations = []
         affirmative = []
         negative = []
@@ -135,6 +144,7 @@ class AtlasTransform:
                 # meaning that the first time that we find a keyword, we have the entire path
                 if not path:
                     path = ".".join(key_parts[:i])
+                    self._ensure_keyword_is_indexed(atlas_index, path)
 
                 keyword = key_part
                 if keyword in self.not_converted:
@@ -170,6 +180,7 @@ class AtlasTransform:
             else:
                 if not path:
                     path = ".".join(key_parts)
+                    self._ensure_keyword_is_indexed(atlas_index, path)
                 if isinstance(value, bool):
                     obj = self._equals(path, value)
                 else:

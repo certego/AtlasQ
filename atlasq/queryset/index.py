@@ -1,7 +1,11 @@
-from typing import List
+import fnmatch
+from logging import getLogger
+from typing import Dict, List
 
 import requests
 from requests.auth import HTTPDigestAuth
+
+logger = getLogger(__name__)
 
 ATLAS_BASE_URL = "https://cloud.mongodb.com/api/atlas/v1.0"
 LIST_TEXT_INDEXES_ENDPOINT = (
@@ -45,17 +49,36 @@ class AtlasIndex:
         response = requests.get(url, auth=HTTPDigestAuth(user, password))
         response.raise_for_status()
         index_results = response.json()
+        self._indexed_fields.clear()
         for index_result in index_results:
             if index_result["name"] == self.index:
-                self._indexed_fields = list(index_result["mappings"]["fields"].keys())
+                self._set_indexed_from_mappings(index_result)
                 self.ensured = True
                 break
         else:
             self.ensured = False
-            self._indexed_fields.clear()
         return self.ensured
+
+    def _set_indexed_fields(self, index_result: Dict, base_field: str = ""):
+        if index_result["type"] == "document":
+            if index_result.get("dynamic", False):
+                self._indexed_fields.append(f"{base_field}.*" if base_field else "*")
+            else:
+                for field, value in index_result.get("fields", {}).items():
+                    field = f"{base_field}.{field}" if base_field else field
+                    self._set_indexed_fields(value, base_field=field)
+
+        else:
+            assert base_field
+            self._indexed_fields.append(base_field)
+
+    def _set_indexed_from_mappings(self, index_result: Dict):
+        mappings = index_result["mappings"]
+        mappings["type"] = "document"
+        self._set_indexed_fields(mappings)
+        logger.debug(self._indexed_fields)
 
     def ensure_keyword_is_indexed(self, keyword: str):
         if not self.ensured:
             raise ValueError("Index not ensured")
-        return keyword in self._indexed_fields
+        return any(fnmatch.fnmatch(keyword, field) for field in self._indexed_fields)

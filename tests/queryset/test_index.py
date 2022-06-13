@@ -20,6 +20,86 @@ class MockResponse:
 
 
 class TestManager(TestBaseCase):
+    def test_ensure_keyword_is_indexed(self):
+        index = AtlasIndex("myindex")
+        index._indexed_fields = ["field1", "field2.*"]
+        index.ensured = True
+        self.assertTrue(index.ensure_keyword_is_indexed("field1"))
+        self.assertFalse(index.ensure_keyword_is_indexed("field2"))
+        self.assertTrue(index.ensure_keyword_is_indexed("field2.field3"))
+
+    def test_set_indexed_from_mappings(self):
+        index = AtlasIndex("myindex")
+        index._set_indexed_from_mappings(
+            {
+                "mappings": {
+                    "dynamic": False,
+                    "fields": {
+                        "field1": {"type": "document", "dynamic": True},
+                        "field2": {
+                            "dynamic": False,
+                            "fields": {
+                                "field": {"indexOptions": "docs", "type": "string"},
+                                "field4": {
+                                    "fields": {
+                                        "field5": {
+                                            "indexOptions": "docs",
+                                            "type": "string",
+                                        },
+                                        "field6": {
+                                            "indexOptions": "docs",
+                                            "type": "string",
+                                        },
+                                    },
+                                    "type": "document",
+                                },
+                            },
+                            "type": "document",
+                        },
+                    },
+                }
+            }
+        )
+        self.assertCountEqual(
+            index._indexed_fields,
+            [
+                "field1.*",
+                "field2.field",
+                "field2.field4.field5",
+                "field2.field4.field6",
+            ],
+        )
+
+    def test_set_indexed_fields(self):
+        index = AtlasIndex("myindex")
+        index._set_indexed_fields(
+            {
+                "type": "document",
+                "dynamic": False,
+                "fields": {
+                    "field1": {"indexOptions": "docs", "type": "string"},
+                    "field2": {
+                        "fields": {
+                            "field3": {"indexOptions": "docs", "type": "string"},
+                            "field4": {"indexOptions": "docs", "type": "string"},
+                        },
+                        "type": "document",
+                    },
+                },
+            }
+        )
+        self.assertCountEqual(
+            index._indexed_fields, ["field1", "field2.field3", "field2.field4"]
+        )
+        index._indexed_fields.clear()
+        index._set_indexed_fields(
+            {
+                "type": "document",
+                "dynamic": True,
+            }
+        )
+        self.assertCountEqual(index._indexed_fields, ["*"])
+
     def test_ensure_index_exists(self):
         index = AtlasIndex("myindex")
         self.assertFalse(index.ensured)

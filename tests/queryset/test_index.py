@@ -97,4 +97,6 @@ class TestManager(TestBaseCase):
             ),
         ):
             with self.assertRaises(HTTPError):
-                index.ensure_index_exists("user", "password", "group", "cluster")
+                index.ensure_index_exists(
+                    "user", "password", "group", "cluster", "db", "collection"
+                )

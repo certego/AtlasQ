@@ -2,6 +2,7 @@ import json
 
 from mongoengine import Document, StringField
 
+from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.visitor import AtlasQueryCompilerVisitor
 from tests.test_base import TestBaseCase
@@ -24,7 +25,9 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         q4 = AtlasQ(key4="value4")
 
         q5 = q3 & q4
-        filters, aggregations = q5.accept(AtlasQueryCompilerVisitor(MyDocument))
+        filters, aggregations = q5.accept(
+            AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
+        )
         self.assertEqual([], aggregations)
         # print(json.dumps(filters, indent=4),)
         self.assertEqual(
@@ -80,7 +83,9 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         q1 = AtlasQ(key="value", key2="value2")
         q2 = AtlasQ(key3="value3", key4="value4")
         q5 = q1 & q2
-        filters, aggregations = q5.accept(AtlasQueryCompilerVisitor(MyDocument))
+        filters, aggregations = q5.accept(
+            AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
+        )
 
         self.assertEqual([], aggregations)
         self.assertEqual(
@@ -102,7 +107,9 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         q1 = AtlasQ(key="value", key2="value2")
         q2 = AtlasQ(key3="value3", key4="value4")
         q5 = q1 | q2
-        filters, aggregations = q5.accept(AtlasQueryCompilerVisitor(MyDocument))
+        filters, aggregations = q5.accept(
+            AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
+        )
         self.assertEqual([], aggregations)
         self.assertEqual(
             {

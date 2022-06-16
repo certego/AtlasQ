@@ -4,6 +4,8 @@ from typing import Dict, List, Tuple
 from mongoengine import Q
 from mongoengine.queryset.visitor import QueryCompilerVisitor, SimplificationVisitor
 
+from atlasq.queryset.index import AtlasIndex
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +25,10 @@ class AtlasSimplificationVisitor(SimplificationVisitor):
 
 
 class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
+    def __init__(self, document, atlas_index: AtlasIndex):
+        super(AtlasQueryCompilerVisitor, self).__init__(document)
+        self.atlas_index = atlas_index
+
     def _visit_combination_and(self, combination) -> Tuple[Dict, List[Dict]]:
         affirmatives = []
         negatives = []
@@ -64,7 +70,7 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
 
         affirmative, negative, other_aggregations = AtlasTransform(
             query.query
-        ).transform()
+        ).transform(self.atlas_index)
         result = {}
         if affirmative:
             result.setdefault("compound", {})["filter"] = affirmative

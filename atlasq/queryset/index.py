@@ -5,6 +5,8 @@ from typing import Dict, List
 import requests
 from requests.auth import HTTPDigestAuth
 
+from atlasq.queryset.exceptions import AtlasIndexError
+
 logger = getLogger(__name__)
 
 ATLAS_BASE_URL = "https://cloud.mongodb.com/api/atlas/v1.0"
@@ -19,6 +21,12 @@ class AtlasIndex:
         self._indexed_fields: List[str] = []
         self.ensured: bool = False
         self._index: str = index_name
+
+    def __copy__(self):
+        res = AtlasIndex(self._index)
+        res.ensured = self.ensured
+        res._indexed_fields = self._indexed_fields
+        return res
 
     @property
     def index(self) -> str:
@@ -39,7 +47,7 @@ class AtlasIndex:
         collection_name: str,
     ):
         if not self.index:
-            raise ValueError("No index defined")
+            raise AtlasIndexError("No index defined")
         url = LIST_TEXT_INDEXES_ENDPOINT.format(
             GROUP_ID=group_id,
             CLUSTER_NAME=cluster_name,
@@ -80,5 +88,5 @@ class AtlasIndex:
 
     def ensure_keyword_is_indexed(self, keyword: str):
         if not self.ensured:
-            raise ValueError("Index not ensured")
+            raise AtlasIndexError("Index not ensured")
         return any(fnmatch.fnmatch(keyword, field) for field in self._indexed_fields)

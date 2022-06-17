@@ -1,11 +1,11 @@
-from unittest import skip
 from unittest.mock import patch
 
 from mongoengine import Document, ListField, StringField
 from mongomock import command_cursor
 from mongomock.command_cursor import CommandCursor
 
-from atlasq.queryset.node import AtlasQ
+from atlasq import AtlasQ
+from atlasq.queryset import AtlasIndex
 from atlasq.queryset.queryset import AtlasQuerySet
 from tests.test_base import TestBaseCase
 
@@ -21,11 +21,8 @@ class TestQuerySet(TestBaseCase):
     def setUp(self) -> None:
         super(TestQuerySet, self).setUp()
         MyDocument.objects.all().delete()
-        self.base = AtlasQuerySet(
-            MyDocument, MyDocument._get_collection(), cache_expiration=0
-        )
-        self.base.index = "test"
-        self.base.cache = "default"
+        self.base = AtlasQuerySet(MyDocument, MyDocument._get_collection())
+        self.base.index = AtlasIndex("test")
         self.obs = MyDocument(
             name="test.com",
             md5="d8cfbe774890e3b523ce584ce640a452",
@@ -33,208 +30,150 @@ class TestQuerySet(TestBaseCase):
             related_threat=["phishing"],
         )
 
-    @skip("Not implemented in mongoomock")
-    def test_sort_by_count_list(self):
-        self.obs.save()
-        MyDocument.objects.create(
-            name="test.com",
-            md5="d8cfbe774890e3b523ce584ce640a452",
-            classification="domain",
-            related_threat=["phishing", "not_phishing"],
-        )
-        objects = self.base.sort_by_count("related_threat")
-        objects = list(objects)
-        self.assertEqual(len(objects), 2)
-        self.assertEqual(objects[0]["_id"], "phishing")
-        self.assertEqual(objects[0]["count"], 2)
-        self.assertEqual(objects[1]["_id"], "not_phishing")
-        self.assertEqual(objects[1]["count"], 1)
-
-    @skip("Not implemented in mongoomock")
-    def test_sort_by_count(self):
-        self.obs.save()
-        MyDocument.objects.create(
-            name="test.com",
-            md5="d8cfbe774890e3b523ce584ce640a452",
-            classification="domain",
-            related_threat=["phishing", "not_phishing"],
-        )
-        objects = self.base.sort_by_count("classification")
-        objects = list(objects)
-
-        self.assertEqual(len(objects), 1)
-        self.assertEqual(objects[0]["_id"], "domain")
-        self.assertEqual(objects[0]["count"], 2)
-
     def test_clone(self):
-        self.base.filters = [1, 2, 3]
-        self.base.aggregations = [1, 2, 4]
-        self.base.cache_expiration = 5
-        clone = self.base.clone()
-        self.assertNotEqual(self.base, clone)
-        for key, value in self.base.__dict__.items():
-            if (
-                isinstance(value, str)
-                or isinstance(value, list)
-                or isinstance(value, int)
-            ):
-                self.assertEqual(value, clone.__dict__[key])
+        self.base._count = True
+        self.base.index.ensured = True
+        qs = self.base.clone()
+        self.assertEqual(qs._count, True)
+        self.assertEqual(qs._aggrs_query, None)
+        self.assertEqual(qs._search_result, None)
+        self.assertNotEqual(qs.index, self.base.index)
+        self.assertEqual(qs.index.index, self.base.index.index)
+        self.assertEqual(qs.index.ensured, self.base.index.ensured)
 
-    def test_must_fields_to_show(self):
-        self.assertCountEqual(
-            self.base.must_fields_to_show,
-            ["classification", "name", "md5"],
-        )
-
-    def test__clone_into(self):
-        self.base.filters = [1, 2, 3]
-        self.base.aggregations = [1, 2, 4]
-        self.base.cache_expiration = 5
-        self.base.alias = "aa"
-        clone = self.base._clone_into(self.base)
-        for field in self.base.copy_props:
-            self.assertEqual(getattr(self.base, field), getattr(clone, field))
-
-    def test_cache_expire_in(self):
-        clone = self.base.cache_expire_in(5)
-        self.assertNotEqual(clone, self.base)
-        self.assertEqual(clone.cache_expiration, 5)
-        self.assertEqual(self.base.cache_expiration, 0)
-
-    def test_scalar(self):
-        self.obs.save()
-        self.assertEqual(
-            self.base.scalar("name", "classification"), [("test.com", "domain")]
-        )
-
-    def test_only(self):
-        self.obs.save()
-        objs = self.base.only("name", "classification")[0]
-        self.assertEqual(objs.name, "test.com")
-        self.assertEqual(objs.classification, "domain")
-        # md5 is always present
-        self.assertEqual(objs.md5, "d8cfbe774890e3b523ce584ce640a452")
-        self.assertListEqual(objs.related_threat, [])
-
-        objs = self.base.all()[0]
-        self.assertEqual(objs.name, "test.com")
-        self.assertListEqual(objs.related_threat, ["phishing"])
+    def test_ensure_index(self):
+        with patch("atlasq.queryset.queryset.AtlasIndex.ensure_index_exists") as mock:
+            self.base.ensure_index("user", "password", "group_id", "cluster_name")
+            mock.assert_called_once_with(
+                "user",
+                "password",
+                "group_id",
+                "cluster_name",
+                self.db_name,
+                "my_document",
+            )
 
     def test_count(self):
-        self.assertEqual(0, self.base.count())
+        r = self.base.count()
+        self.assertEqual(r, 0)
         self.obs.save()
-        self.assertEqual(1, self.base.count())
+        r = self.base.count()
+        self.assertEqual(r, 1)
+        with patch(
+            "mongomock.aggregate.process_pipeline",
+            side_effect=[
+                command_cursor.CommandCursor([{"meta": {"count": {"total": 0}}}]),
+            ],
+        ):
+            r = self.base.filter(name="wrong.com").count()
+        self.assertEqual(r, 0)
 
-    def test_order_by(self):
-        MyDocument.objects.create(
-            name="test3.com",
-            md5="d8cfbe774890e3b523ce584ce640a452",
-            classification="domain",
-            related_threat=["phishing"],
-        )
-        MyDocument.objects.create(
-            name="test2.com",
-            md5="d8cfbe774890e3b523ce584ce640a452",
-            classification="domain",
-            related_threat=["phishing"],
-        )
+    def test_only(self):
+        qs = self.base.only("name")
+        self.assertEqual(qs._get_projections(), [{"$project": {"name": 1}}])
 
-        self.obs.save()
-        self.assertEqual(self.base.order_by("+name")[0]["name"], "test.com")
-        self.assertEqual(self.base.order_by("-name")[0]["name"], "test3.com")
-
-    def test_aggregate(self):
-        self.obs.save()
-        cursor = self.base.aggregate(
-            [{"$match": {"classification": "domain"}}],
-        )
-        self.assertIsInstance(cursor, CommandCursor)
-        result = next(cursor)
-        self.assertEqual(result["_id"], self.obs.id)
+    def test_exclude(self):
+        qs = self.base.exclude("name")
+        self.assertEqual(qs._get_projections(), [{"$project": {"name": 0}}])
 
     def test_filter(self):
+        qs = self.base.filter(name="test.com")
+        self.assertEqual(
+            qs._aggrs,
+            [
+                {
+                    "$search": {
+                        "index": "test",
+                        "compound": {
+                            "filter": [
+                                {
+                                    "compound": {
+                                        "filter": [
+                                            {
+                                                "text": {
+                                                    "query": "test.com",
+                                                    "path": "name",
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                    }
+                }
+            ],
+        )
         with patch(
             "mongomock.aggregate.process_pipeline",
-            side_effect=[command_cursor.CommandCursor([])],
+            side_effect=[
+                command_cursor.CommandCursor([{}]),
+            ],
         ):
-            objects = self.base.filter(classification="domain")
-            self.assertEqual(len(objects), 0)
+            self.assertEqual(len(qs), 0)
         self.obs.save()
+        qs = self.base.filter(AtlasQ(name="test.com") & AtlasQ(classification="domain"))
         with patch(
             "mongomock.aggregate.process_pipeline",
             side_effect=[
                 command_cursor.CommandCursor(
                     [{"_id": self.obs.id, "name": self.obs.name}]
-                )
+                ),
             ],
         ):
-            objects = self.base.filter(classification="domain")
-            self.assertEqual(len(objects), 1)
+            self.assertEqual(len(qs), 1)
+
+    def test_aggregate(self):
+        cursor = self.base.aggregate({"$match": {"name": "test.com"}})
+        self.assertIsInstance(cursor, CommandCursor)
+        with self.assertRaises(StopIteration):
+            next(cursor)
+        self.obs.save()
+        cursor = self.base.aggregate({"$match": {"name": "test.com"}})
+        self.assertIsInstance(cursor, CommandCursor)
+        obj = next(cursor)
+        self.assertEqual(obj["_id"], self.obs.id)
+        self.assertIn("name", obj)
+        # exclude does not work with aggregate, even with mongoengine
+        cursor = self.base.exclude("name").aggregate({"$match": {"name": "test.com"}})
+        obj = next(cursor)
+        self.assertIn("name", obj)
+
+    def test_first(self):
+        self.assertIsNone(self.base.first())
+        self.obs.save()
+        self.assertEqual(self.base.first().id, self.obs.id)
         with patch(
             "mongomock.aggregate.process_pipeline",
             side_effect=[
                 command_cursor.CommandCursor(
                     [{"_id": self.obs.id, "name": self.obs.name}]
-                )
+                ),
             ],
         ):
-
-            objects = self.base.filter(AtlasQ(classification="domain"))
-            self.assertEqual(len(objects), 1)
-
-    @skip("To mock")
-    def test_filter_cache(self):
-        base = self.base.cache_expire_in(5)
-        objects = base.filter(classification="domain")
-        self.assertEqual(len(objects), 0)
-        self.obs.save()
-        objects = self.base.filter(classification="domain")
-        self.assertEqual(len(objects), 1)
-        objects = base.filter(classification="domain")
-        self.assertEqual(len(objects), 0)
+            self.assertEqual(
+                self.base.filter(name="test.com").first().name, self.obs.name
+            )
 
     def test_get(self):
         with patch(
             "mongomock.aggregate.process_pipeline",
             side_effect=[
-                command_cursor.CommandCursor([{"meta": {"count": {"total": 0}}}]),
-                command_cursor.CommandCursor([]),
+                command_cursor.CommandCursor([{}]),
             ],
         ):
             with self.assertRaises(MyDocument.DoesNotExist):
-                self.base.get(classification="domain")
-        obs = MyDocument.objects.create(
-            name="test1.com",
-            md5="d8cfbe774890e3b523ce584ce640a452",
-            classification="domain",
-            related_threat=["phishing"],
-        )
+                self.base.get(name="test.com")
+        self.obs.save()
         with patch(
             "mongomock.aggregate.process_pipeline",
             side_effect=[
-                command_cursor.CommandCursor([{"meta": {"count": {"total": 1}}}]),
-                command_cursor.CommandCursor([{"_id": obs.id, "name": obs.name}]),
-            ],
-        ):
-            self.assertEqual(obs, self.base.get(classifcation="domain"))
-        obs2 = MyDocument.objects.create(
-            name="test2.com",
-            md5="d8cfbe774890e3b523ce584ce640a452",
-            classification="domain",
-            related_threat=["phishing"],
-        )
-        with patch(
-            "mongomock.aggregate.process_pipeline",
-            side_effect=[
-                command_cursor.CommandCursor([{"meta": {"count": {"total": 2}}}]),
                 command_cursor.CommandCursor(
-                    [
-                        {"_id": obs.id, "name": obs.name},
-                        {"_id": obs2.id, "name": obs2.name},
-                    ]
+                    [{"_id": self.obs.id, "name": self.obs.name}]
                 ),
             ],
         ):
-
-            with self.assertRaises(MyDocument.MultipleObjectsReturned):
-                self.base.get(classification="domain")
+            self.assertEqual(self.base.get(name="test.com").name, self.obs.name)
+        self.base.index.ensured = True
+        with self.assertRaises(ValueError):
+            self.base.get(another_field="test.com")

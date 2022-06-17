@@ -18,8 +18,8 @@ class AtlasQ(Q):
     def operation(self):
         return self.AND
 
-    def to_query(
-        self, document, atlas_index: AtlasIndex  # pylint: disable=arguments-differ
+    def to_query(  # pylint: disable=arguments-differ
+        self, document, atlas_index: AtlasIndex
     ) -> List[Dict]:
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())

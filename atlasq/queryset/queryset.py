@@ -80,8 +80,7 @@ class AtlasQuerySet(QuerySet):
         if self._count:
             if self._query_obj:
                 return [{"$project": {"meta": "$$SEARCH_META"}}]
-            else:
-                return [{"$count": "count"}]
+            return [{"$count": "count"}]
 
         loaded_fields = self._loaded_fields.as_dict()
         logger.debug(loaded_fields)
@@ -92,8 +91,8 @@ class AtlasQuerySet(QuerySet):
     def count(self, with_limit_and_skip=False):
         # todo manage limit and skip
         qs = self.clone()
-        qs._count = True
-        cursor = qs.aggregate(qs._aggrs)
+        qs._count = True  # pylint: disable=protected-access
+        cursor = qs.aggregate(qs._aggrs)  # pylint: disable=protected-access
         try:
             count = next(cursor)
         except StopIteration:

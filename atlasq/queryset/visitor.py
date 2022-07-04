@@ -35,7 +35,13 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
         aggregations = []
 
         for child in combination.children:
-            filters, child_aggregations = child
+            filters, *child_aggregations = child
+            try:
+                filters = filters["$search"]
+            except KeyError:
+                # in case we return just aggregations, the filters should be empty
+                child_aggregations = [filters] + child_aggregations
+                filters = {}
             if "compound" in filters:
                 if "filter" in filters["compound"]:
                     affirmatives.extend(filters["compound"]["filter"])
@@ -53,27 +59,43 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
         aggregations = []
         children_results = []
         for child in combination.children:
-            filters, aggregations = child
+            filters, *child_aggregations = child
+            try:
+                filters = filters["$search"]
+            except KeyError:
+                # in case we return just aggregations, the filters should be empty
+                child_aggregations = [filters] + child_aggregations
+                filters = {}
+            filters.pop("index")
             children_results.append(filters)
-            aggregations.extend(aggregations)
+            aggregations.extend(child_aggregations)
         return {
             "compound": {"should": children_results, "minimumShouldMatch": 1}
         }, aggregations
 
-    def visit_combination(self, combination) -> Tuple[Dict, List[Dict]]:
+    def visit_combination(self, combination) -> List[Dict]:
         if combination.operation == combination.AND:
-            return self._visit_combination_and(combination)
-        return self._visit_combination_or(combination)
+            filters, aggregations = self._visit_combination_and(combination)
+        else:
+            filters, aggregations = self._visit_combination_or(combination)
+        filters["index"] = self.atlas_index.index
+        result = [{"$search": filters}] + aggregations
+        return result
 
-    def visit_query(self, query) -> Tuple[Dict, List[Dict]]:
+    def visit_query(self, query) -> List[Dict]:
         from atlasq.queryset.transform import AtlasTransform
 
-        affirmative, negative, other_aggregations = AtlasTransform(
-            query.query
-        ).transform(self.atlas_index)
-        result = {}
+        affirmative, negative, aggregations = AtlasTransform(query.query).transform(
+            self.atlas_index
+        )
+        filters = {}
         if affirmative:
-            result.setdefault("compound", {})["filter"] = affirmative
+            filters.setdefault("compound", {})["filter"] = affirmative
         if negative:
-            result.setdefault("compound", {})["mustNot"] = negative
-        return result, other_aggregations
+            filters.setdefault("compound", {})["mustNot"] = negative
+        result = []
+        if filters:
+            filters["index"] = self.atlas_index.index
+            result += [{"$search": filters}]
+        result += aggregations
+        return result

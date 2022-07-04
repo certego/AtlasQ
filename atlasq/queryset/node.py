@@ -19,10 +19,8 @@ class AtlasQ(Q):
         return self.AND
 
     def to_query(  # pylint: disable=arguments-differ
-        self, document, atlas_index: Union[None, AtlasIndex] = None
-    ) -> Tuple[Dict, List[Dict]]:
-        if AtlasIndex is None:
-            return super().to_query(document)
+        self, document, atlas_index: AtlasIndex
+    ) -> List[Dict]:
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
         query = query.accept(AtlasQueryCompilerVisitor(document, atlas_index))
@@ -31,7 +29,7 @@ class AtlasQ(Q):
     def _combine(self, other, operation) -> Union["AtlasQ", "AtlasQCombination"]:
         logger.debug(f"_combine {self.__class__.__name__} {other}, {operation}")
 
-        result = super(AtlasQ, self)._combine(other, operation)
+        result = super()._combine(other, operation)
         if isinstance(result, QCombination):
             return AtlasQCombination(result.operation, result.children)
         return AtlasQ(**result.query)

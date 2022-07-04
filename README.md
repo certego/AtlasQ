@@ -21,12 +21,6 @@ The main idea, is that the `filter` should work like an `aggregation`.
 For doing so, and with keeping the compatibility on how MongoEngine works (i.e. the filter should return a queryset of `Document`) we had to do some work.  
 Calling `.aggregate` instead has to work as MongoEngine expect, meaning a list of dictionaries. 
 #### Features
-##### Cache
-To complicate things, we even decided to add a cache!
-The issue there is that we do query on a large collection, and the query is composed of many clauses, meaning that
-the query could take 2/3 minutes to have a result. The second constraint is that the result of this query does not change rapidly 
-(or at least not the `filtering` part). If the cache is enabled, we save the objects retrieved in a new temporary collection
-and future queries that checks the same parameters, will retrieve the documents from this new collection.
 
 ##### Validation
 We also decided to have, optionally, a validation of the index.
@@ -45,10 +39,12 @@ from mongoengine import Document, fields
 
 from atlasq import AtlasManager, AtlasQ, AtlasQuerySet
 
+index_name = str("my_index")
+
 class MyDocument(Document):
     name = fields.StringField(required=True)
     surname = fields.StringField(required=True)
-    atlas = AtlasManager("myindex", "default")
+    atlas = AtlasManager(index_name)
 
 obj = MyDocument.objects.create(name="value", surname="value2")
 
@@ -59,4 +55,15 @@ assert obj == obj_from_atlas
 
 obj2_from_atlas = MyDocument.atlas.get(AtlasQ(name="value") & AtlasQ(surname="value2"))
 assert obj == obj2_from_atlas
+
+
+obj3_from_atlas = MyDocument.atlas.get(AtlasQ(wrong_field="value"))
+assert obj3_from_atlas is None
+
+result = MyDocument.atlas.ensure_index("user", "pwd", "group", "cluster")
+assert result is True
+obj3_from_atlas = MyDocument.atlas.get(AtlasQ(wrong_field="value")) # raises AtlasIndexFieldError
+
+
+
 ```

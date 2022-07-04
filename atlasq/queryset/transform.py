@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 from mongoengine import QuerySet
 
+from atlasq.queryset.exceptions import AtlasFieldError, AtlasIndexFieldError
 from atlasq.queryset.index import AtlasIndex
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,7 @@ class AtlasTransform:
         self, path: str, value: Union[int, datetime.datetime], keyword: str
     ) -> Dict:
         if keyword not in self.range_keywords:
-            raise ValueError(
+            raise AtlasFieldError(
                 f"Range search for {path} must be {self.range_keywords}, not {keyword}"
             )
         if isinstance(value, datetime.datetime):
@@ -83,7 +84,7 @@ class AtlasTransform:
         elif isinstance(value, int):
             pass
         else:
-            raise ValueError(
+            raise AtlasFieldError(
                 f"Range search for {path} must have a value of datetime or integer"
             )
         return {"range": {"path": path, keyword: value}}
@@ -98,14 +99,14 @@ class AtlasTransform:
 
     def _text(self, path: str, value: Any) -> Dict:
         if not value:
-            raise ValueError(f"Text search for {path} cannot be {value}")
+            raise AtlasFieldError(f"Text search for {path} cannot be {value}")
         return {
             "text": {"query": value, "path": path},
         }
 
     def _size(self, path: str, value: int, operator: str) -> Dict:
         if not isinstance(value, int):
-            raise ValueError(f"Size search for {path} must be an int")
+            raise AtlasFieldError(f"Size search for {path} must be an int")
         if value != 0:
             raise NotImplementedError(f"Size search for {path} must be 0")
         if operator not in ["eq", "ne"]:
@@ -116,11 +117,13 @@ class AtlasTransform:
     def _ensure_keyword_is_indexed(self, atlas_index: AtlasIndex, keyword: str) -> None:
         if atlas_index.ensured:
             if not atlas_index.ensure_keyword_is_indexed(keyword):
-                raise ValueError(
+                raise AtlasIndexFieldError(
                     f"The keyword {keyword} is not indexed in {atlas_index.index}"
                 )
 
-    def transform(self, atlas_index) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+    def transform(
+        self, atlas_index: AtlasIndex
+    ) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         other_aggregations = []
         affirmative = []
         negative = []

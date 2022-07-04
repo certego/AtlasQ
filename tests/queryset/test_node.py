@@ -27,11 +27,11 @@ class TestAtlasQ(TestBaseCase):
 
         q = AtlasQ(name="test")
         res = q.to_query(MyDocument, AtlasIndex("test"))
-        self.assertIsInstance(res, tuple)
-        self.assertEqual(2, len(res))
-        filters, aggregations = res
+        self.assertIsInstance(res, list)
+        self.assertEqual(1, len(res))
+        filters, *aggregations = res
         self.assertIsInstance(filters, dict)
-        self.assertIn("compound", filters)
+        self.assertIn("compound", filters["$search"])
         self.assertIsInstance(aggregations, list)
         self.assertEqual(0, len(aggregations))
 

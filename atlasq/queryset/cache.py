@@ -2,11 +2,10 @@ import datetime
 import hashlib
 import json
 import logging
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 from mongoengine import Document, QuerySet, get_db
 from mongoengine.context_managers import switch_collection, switch_db
-from pymongo.collection import Collection
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +19,9 @@ class _AtlasCache:
         def __init__(self, key):
             super().__init__(f"Cache key {key} not found")
 
-    def __init__(self, document: Document, collection: Collection, **kwargs):
+    def __init__(self, document: Type[Document], **kwargs):
         self._document = document
-        self._collection = collection
+        self._collection = self._document._get_collection_name()
         self._max_minutes = 30
 
     def _aggregations_to_key(self, aggregations: List[Dict]) -> str:
@@ -48,12 +47,11 @@ class _AtlasCache:
 class AtlasDbCache(_AtlasCache):
     def __init__(
         self,
-        document: Document,
-        collection: Collection,
+        document: Type[Document],
         db_connection_alias: str,
         **kwargs,
     ):
-        super().__init__(document, collection, **kwargs)
+        super().__init__(document, **kwargs)
         self._db_connection_alias = db_connection_alias
         self.db_name = get_db(self._db_connection_alias).name
 
@@ -126,8 +124,8 @@ class AtlasDbCache(_AtlasCache):
 
 
 class AtlasRamCache(_AtlasCache):
-    def __init__(self, document: Document, collection: Collection, **kwargs):
-        super().__init__(document, collection, **kwargs)
+    def __init__(self, document: Type[Document], **kwargs):
+        super().__init__(document, **kwargs)
         self._cache: Dict[str, Tuple[datetime.datetime, QuerySet]] = {}
 
     def remove(self, aggregations: List[Dict]) -> None:

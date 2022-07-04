@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 from mongoengine import Q, QuerySet
 from pymongo.command_cursor import CommandCursor
 
+from atlasq.queryset import AtlasIndexError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 
@@ -68,7 +69,7 @@ class AtlasQuerySet(QuerySet):
 
     def __call__(self, q_obj=None, **query):
         if self.index is None:
-            raise ValueError("Index is not set")
+            raise AtlasIndexError("Index is not set")
         q = AtlasQ(**query)
         if q_obj is not None:
             q &= q_obj

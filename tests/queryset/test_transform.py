@@ -4,6 +4,7 @@ import json
 from mongoengine import Document, fields
 
 from atlasq.queryset import AtlasIndexFieldError
+from atlasq.queryset.exceptions import AtlasFieldError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.transform import AtlasTransform
@@ -94,19 +95,19 @@ class TestTransformSteps(TestBaseCase):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query)
         time = datetime.datetime.now()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AtlasFieldError):
             t._range("field", time, "wat")
 
     def test__range_none(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AtlasFieldError):
             t._range("field", None, "lte")
 
     def test__range_string(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AtlasFieldError):
             t._range("field", "3", "lte")
 
     def test__equals(self):

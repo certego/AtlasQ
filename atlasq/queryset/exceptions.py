@@ -8,3 +8,7 @@ class AtlasIndexFieldError(AtlasError):
 
 class AtlasIndexError(AtlasError):
     pass
+
+
+class AtlasFieldError(AtlasError):
+    pass

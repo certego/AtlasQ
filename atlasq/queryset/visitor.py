@@ -41,6 +41,7 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
             except KeyError:
                 # in case we return just aggregations, the filters should be empty
                 child_aggregations = [filters] + child_aggregations
+                filters = {}
             if "compound" in filters:
                 if "filter" in filters["compound"]:
                     affirmatives.extend(filters["compound"]["filter"])
@@ -64,6 +65,7 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
             except KeyError:
                 # in case we return just aggregations, the filters should be empty
                 child_aggregations = [filters] + child_aggregations
+                filters = {}
             filters.pop("index")
             children_results.append(filters)
             aggregations.extend(child_aggregations)

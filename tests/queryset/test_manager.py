@@ -9,16 +9,16 @@ class TestManager(TestBaseCase):
     def test_with_index(self):
         class MyDocument(Document):
             name = fields.StringField(required=True)
-            atlas = AtlasManager("myindex", "default")
+            atlas = AtlasManager("myindex")
 
         self.assertIsInstance(MyDocument.atlas, AtlasQuerySet)
-        self.assertEqual(MyDocument.atlas.index, "myindex")
-        self.assertIsNotNone(MyDocument.atlas.cache)
+        self.assertEqual(MyDocument.atlas.index.index, "myindex")
+        # self.assertIsNotNone(MyDocument.atlas.cache)
 
     def test_no_index(self):
         class MyDocument(Document):
             name = fields.StringField(required=True)
-            atlas = AtlasManager(None, "default")
+            atlas = AtlasManager(None)
 
         self.assertIsInstance(MyDocument.atlas, QuerySet)
         with self.assertRaises(AssertionError):

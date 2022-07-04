@@ -1,320 +1,107 @@
 import copy
-import json
 import logging
-from typing import Dict, List, Union
+from typing import Any, Dict, List
 
-from mongoengine import DEFAULT_CONNECTION_NAME, Q, QuerySet
-from mongoengine.common import _import_class
+from mongoengine import Q, QuerySet
+from pymongo.command_cursor import CommandCursor
 
-from atlasq.queryset.cache import AtlasCache
 from atlasq.queryset.index import AtlasIndex
-from atlasq.queryset.node import AtlasQ, AtlasQCombination
+from atlasq.queryset.node import AtlasQ
 
 logger = logging.getLogger(__name__)
 
 
 class AtlasQuerySet(QuerySet):
-    copy_props = (
-        "filters",
-        "aggregations",
-        "projections",
-        "_index",
-        "fields_to_show",
-        "order_by_fields",
-        "count_objects",
-        "cache_expiration",
-        "_cache",
-        "alias",
-    )
-    order_mapping = {
-        "+": 1,
-        "-": -1,
-    }
-
-    def clone(self) -> "AtlasQuerySet":
-        return self._clone_into(
-            self.__class__(
-                self._document,
-                self._collection,
-                self.cache_expiration,  # pylint: disable=protected-access
-            )
-        )
-
-    def _clone_into(self, new_qs) -> "AtlasQuerySet":
-        new_qs = super()._clone_into(new_qs)
-
-        for prop in self.copy_props:
+    def _clone_into(self, new_qs):
+        copy_props = ("index", "_aggrs_query", "_search_result", "_count")
+        qs = super()._clone_into(new_qs)
+        for prop in copy_props:
             val = getattr(self, prop)
             setattr(new_qs, prop, copy.copy(val))
-        return new_qs
+        return qs
 
-    def __repr__(self):
-        return repr(self._execute())
-
-    def __init__(self, document, collection, cache_expiration: int = 0):
+    def __init__(self, document, collection):
         super().__init__(document, collection)
-        self.filters: List[Dict] = []
-        self.aggregations: List[Dict] = []
-        self.projections: List[Dict] = []
-        # we always have to retrieve at least the required fields of document, it is required by the cache
-        self.must_fields_to_show = set(
-            k
-            for k, v in self._document._fields.items()
-            if v.required  # pylint: disable=protected-access
-        )
-        self.fields_to_show = set()
-        self.order_by_fields = set()
-        self.count_objects: bool = False
+        self._query_obj = AtlasQ()
+        self.index: AtlasIndex = None
 
-        self._cache = None
-
-        self.cache_expiration = cache_expiration
-
-        self._index: Union[AtlasIndex, None] = None
-        self.alias = document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
-
-    @property
-    def cache(self) -> AtlasCache:
-        return self._cache
-
-    @cache.setter
-    def cache(self, alias: str):
-        self._cache = AtlasCache(self._document, self._collection, alias)
-
-    @property
-    def index(self):
-        return self._index.index
-
-    @index.setter
-    def index(self, value: Union[str, AtlasIndex]):
-        if isinstance(value, str):
-            self._index = AtlasIndex(value)
-        elif isinstance(value, AtlasIndex):
-            self._index = value
-        else:
-            raise TypeError("Index should be a string or an AtlasIndex")
+        self._aggrs_query: List[Dict[str, Any]] = None
+        self._search_result: CommandCursor = None
+        self._count: bool = False
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
-        db_name = self.alias
+        db_name = self._document._get_db().name  # pylint: disable=protected-access
         collection_name = (
             self._document._get_collection_name()  # pylint: disable=protected-access
         )
-        self._index.ensure_index_exists(
+        return self.index.ensure_index_exists(
             user, password, group_id, cluster_name, db_name, collection_name
         )
 
-    def __iter__(self):
-        objects = self._execute()
-        return iter(objects)
+    @property
+    def _aggrs(self):
+        # corresponding of _query for us
+        if self._aggrs_query is None:
+            self._aggrs_query = self._query_obj.to_query(self._document, self.index)
+            if self._aggrs_query:
+                if self._count:
+                    self._aggrs_query[0]["$search"]["count"] = {"type": "total"}
+            self._aggrs_query += self._get_projections()
+            logger.debug(self._aggrs_query)
+        return self._aggrs_query
 
-    def cache_expire_in(self, cache_expiration: int):
-        qs = self.clone()
-        qs.cache_expiration = cache_expiration
+    @property
+    def _cursor(self):
+        self._search_result = self.aggregate(self._aggrs)
+        logger.debug(self._search_result)
+        return super()._cursor
+
+    @property
+    def _query(self):
+        if not self._search_result:
+            return None
+        # unfortunately here we have to actually run the query to get the objects
+        # i do not see other way to do this atm
+        self._query_obj = Q(id__in=[obj["_id"] for obj in self._search_result if obj])
+        logger.debug(self._query_obj)
+        return super()._query
+
+    def __call__(self, q_obj=None, **query):
+        if self.index is None:
+            raise ValueError("Index is not set")
+        q = AtlasQ(**query)
+        if q_obj is not None:
+            q &= q_obj
+        logger.debug(q)
+        qs = super().__call__(q)
         return qs
 
-    def _is_field__list(self, field: str) -> bool:
-        ListField = _import_class("ListField")  # pylint: disable=invalid-name
-        field_parts = field.split(".")
-        field_instances = (
-            self._document._lookup_field(  # pylint: disable=protected-access
-                field_parts
-            )
-        )
-        return isinstance(field_instances[-1], ListField)
+    def _get_projections(self) -> List[Dict[str, Any]]:
+        if self._count:
+            if self._query_obj:
+                return [{"$project": {"meta": "$$SEARCH_META"}}]
+            return [{"$count": "count"}]
 
-    def unwind(self, field: str):
-        logger.debug(f"called unwind for field {field}")
-        qs = self.clone()
-        qs.aggregations.append({"$unwind": f"${field}"})
-        return qs
-
-    def using(self, alias):
-        self.alias = alias
-        return super().using(alias)
-
-    def sort_by_count(self, field: str):
-        logger.debug(f"called sort_by_count for field {field}")
-        qs = self.clone()
-        if qs._is_field__list(field):  # pylint: disable=protected-access
-            qs.aggregations = qs.unwind(field).aggregations
-        qs.aggregations.append({"$sortByCount": f"${field}"})
-        return qs
-
-    def __out_query(self) -> Dict:
-        out = {
-            "$out": {
-                "db": self.cache.db_name,
-                "coll": self.cache.get_collection_name(self.filters),
-            }
-        }
-        return out
-
-    def __get_from_db(self) -> QuerySet:
-        # we are redirecting the query result to the cache collection
-        # we can call the pymongo aggregation, redirecting the result to the cache collection
-
-        aggregations = self.filters + self.projections
-        if self.cache_expiration > 0:
-            logger.debug("Redirect output to cache collection")
-            aggregations.append(self.__out_query())
-            # the return value is an empty cursor
-            super().aggregate(aggregations)
-            # we need to manually set the cache expiration in the new collection
-            self.cache.set_collection_expiration(
-                self.filters + self.projections, self.cache_expiration
-            )
-            # we can then use the cache to retrieve it from the collection that we just created
-            # if this does not hit, we have a real problem, since we have populated it one second ago
-            objects = self.cache.get(self.filters + self.projections, force=True)
-            # we have to retrieve the document from the main db
-            query = Q()
-            for obj in objects:
-                # we are sure that these fields are present,
-                # so we can safely use them to retrieve the valid document
-                query |= Q(**{field: obj[field] for field in self.must_fields_to_show})
-        else:
-            logger.debug("No redirection of output to cache collection")
-            objects = super().aggregate(aggregations)
-            # we have the correct id, so we can just retrieve the document from the main db
-            query = Q(pk__in=[obj["_id"] for obj in objects])
-        # we can apply the other transformation
-        logger.debug("Retrieving documents from the main db")
-        objects = (
-            self._document.objects.using(self.alias)
-            .filter(query)
-            .only(*self.fields_to_show)
-            .order_by(*self.order_by_fields)
-        )
-        return objects
-
-    def _execute(self):
-        logger.debug(
-            json.dumps(
-                self.filters + self.projections + self.aggregations,
-                indent=2,
-                default=str,
-            )
-        )
-        # hopefully we can cache the result, or by ram or by db
-        if self.count_objects:
-            return super().aggregate(
-                self.filters + self.projections + self.aggregations
-            )
-
-        try:
-            objects = self.cache.get(self.filters + self.projections)
-        # otherwise we have to actually make the query to the real db
-        except (self.cache.ExpiredError, self.cache.KeyError):
-            # otherwise we do not need to even populate the cache
-            objects = self.__get_from_db()
-
-        # we are sure that at this point we have Mongoengine Documents,
-        # meaning that we can safely call the aggregate function
-        # if we have an aggregation to do, and let mongoengine manage that
-        return objects.aggregate(self.aggregations) if self.aggregations else objects
-
-    def scalar(self, *fields):
-        qs = self.clone()
-        objects = qs._execute()  # pylint: disable=protected-access
-        my_objs = []
-        for obj in objects:
-            my_objs.append(tuple(obj[k] for k in fields))
-        return my_objs
-
-    def __len__(self):
-        return len(self._execute())
-
-    def __getitem__(self, key):
-        if isinstance(key, slice):
-            if key.start:
-                raise NotImplementedError("Slicing with a start index is not supported")
-            qs = self.clone()
-            qs.projections.append({"$limit": key.stop})
-            return qs._execute()  # pylint: disable=protected-access
-        if isinstance(key, int):
-            objects = self._execute()
-            return list(objects)[key]
-        raise TypeError(f"{type(key)} is not a valid key")
-
-    def only(self, *fields):
-        qs = self.clone()
-        qs.fields_to_show.update(fields)
-        qs.fields_to_show.update(qs.must_fields_to_show)
-        qs.projections.append(
-            {
-                "$project": {
-                    field.replace("__", ".") if qs.index else field: 1
-                    for field in qs.fields_to_show
-                }
-            }
-        )
-        return qs
+        loaded_fields = self._loaded_fields.as_dict()
+        logger.debug(loaded_fields)
+        if loaded_fields:
+            return [{"$project": loaded_fields}]
+        return []
 
     def count(self, with_limit_and_skip=False):
+        # todo manage limit and skip
         qs = self.clone()
-        qs.count_objects = True
-        if qs.filters:
-            qs.filters[0]["$search"]["count"] = {"type": "total"}
-            # this should not go in the projections because it is not a field of the document
-            qs.aggregations.append({"$project": {"meta": "$$SEARCH_META"}})
-        else:
-            qs.aggregations.append({"$count": "count"})
-        cursor = qs._execute()  # pylint: disable=protected-access
+        qs._count = True  # pylint: disable=protected-access
+        cursor = qs.aggregate(qs._aggrs)  # pylint: disable=protected-access
         try:
             count = next(cursor)
         except StopIteration:
             self._len = 0
         else:
             logger.debug(count)
-            if qs.filters:
+            if self._query_obj:
                 self._len = count["meta"]["count"]["total"]
-                return self._len
-            self._len = count["count"]
+            else:
+                self._len = count["count"]
+        logger.debug(self._len)
         return self._len
-
-    def filter(self, q_obj=None, **query):  # pylint: disable=arguments-differ
-        q = AtlasQ(**query)
-        if q_obj:
-            if not isinstance(q_obj, AtlasQ) and not isinstance(
-                q_obj, AtlasQCombination
-            ):
-                raise TypeError(f"Please use Atlasq not {type(q_obj)}")
-            q &= q_obj
-        text_search, aggregations = q.to_query(self._document, self._index)
-        qs = self.clone()
-        filters = (
-            [{"$search": {"index": qs.index, "compound": {"filter": [text_search]}}}]
-            if text_search
-            else []
-        )
-        qs.filters = filters + aggregations + qs.filters
-        return qs
-
-    def get(self, *q_objs, **query):
-        qs = self.clone()
-        qs = qs.filter(q_objs, **query).limit(2)
-        count = qs.count()
-        if count == 0:
-            msg = f"{qs._document._class_name} matching query does not exist."  # pylint: disable=protected-access
-            raise qs._document.DoesNotExist(msg)  # pylint: disable=protected-access
-        if count == 2:
-            raise qs._document.MultipleObjectsReturned(  # pylint: disable=protected-access
-                "2 or more items returned, instead of 1"
-            )
-        return qs[0]
-
-    def aggregate(self, pipeline: List[Dict], *suppl_pipeline, **kwargs):
-        qs = self.clone()
-        if not isinstance(pipeline, list):
-            raise TypeError("Pipeline should be a list")
-        qs.aggregations += pipeline
-        qs.aggregations += suppl_pipeline
-        return qs._execute()  # pylint: disable=protected-access
-
-    def order_by(self, *keys):
-        qs = super().order_by(*keys)
-        qs.order_by_fields.update(keys)
-        qs.projections.append(
-            {"$sort": dict(qs._ordering)}  # pylint: disable=protected-access
-        )
-        return qs

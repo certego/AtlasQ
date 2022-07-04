@@ -3,6 +3,7 @@ import json
 
 from mongoengine import Document, fields
 
+from atlasq.queryset import AtlasIndexFieldError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.transform import AtlasTransform
@@ -17,17 +18,17 @@ class TestTransformSteps(TestBaseCase):
         q = AtlasQ(field="aaa")
         try:
             AtlasTransform(q.query).transform(index)
-        except ValueError as e:
+        except AtlasIndexFieldError as e:
             self.fail(e)
         q = AtlasQ(field2="aaa")
         try:
             AtlasTransform(q.query).transform(index)
-        except ValueError as e:
+        except AtlasIndexFieldError as e:
             self.fail(e)
 
         index.ensured = True
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AtlasIndexFieldError):
             AtlasTransform(q.query).transform(index)
 
     def test__queryset_value(self):

@@ -36,7 +36,11 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
 
         for child in combination.children:
             filters, *child_aggregations = child
-            filters = filters["$search"]
+            try:
+                filters = filters["$search"]
+            except KeyError:
+                # in case we return just aggregations, the filters should be empty
+                child_aggregations = [filters] + child_aggregations
             if "compound" in filters:
                 if "filter" in filters["compound"]:
                     affirmatives.extend(filters["compound"]["filter"])
@@ -54,11 +58,15 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
         aggregations = []
         children_results = []
         for child in combination.children:
-            filters, *aggregations = child
-            filters = filters["$search"]
+            filters, *child_aggregations = child
+            try:
+                filters = filters["$search"]
+            except KeyError:
+                # in case we return just aggregations, the filters should be empty
+                child_aggregations = [filters] + child_aggregations
             filters.pop("index")
             children_results.append(filters)
-            aggregations.extend(aggregations)
+            aggregations.extend(child_aggregations)
         return {
             "compound": {"should": children_results, "minimumShouldMatch": 1}
         }, aggregations

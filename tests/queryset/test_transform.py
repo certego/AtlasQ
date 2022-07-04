@@ -133,7 +133,7 @@ class TestTransformSteps(TestBaseCase):
     def test__text_none(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AtlasFieldError):
             t._text("field", None)
 
     def test__size_operator_not_supported(self):

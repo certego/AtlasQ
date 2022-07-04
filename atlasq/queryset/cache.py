@@ -2,7 +2,7 @@ import datetime
 import hashlib
 import json
 import logging
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 from mongoengine import Document, QuerySet, get_db
 from mongoengine.context_managers import switch_collection, switch_db
@@ -19,7 +19,7 @@ class _AtlasCache:
         def __init__(self, key):
             super().__init__(f"Cache key {key} not found")
 
-    def __init__(self, document: Document, **kwargs):
+    def __init__(self, document: Type[Document], **kwargs):
         self._document = document
         self._collection = self._document._get_collection_name()
         self._max_minutes = 30
@@ -47,7 +47,7 @@ class _AtlasCache:
 class AtlasDbCache(_AtlasCache):
     def __init__(
         self,
-        document: Document,
+        document: Type[Document],
         db_connection_alias: str,
         **kwargs,
     ):
@@ -124,7 +124,7 @@ class AtlasDbCache(_AtlasCache):
 
 
 class AtlasRamCache(_AtlasCache):
-    def __init__(self, document: Document, **kwargs):
+    def __init__(self, document: Type[Document], **kwargs):
         super().__init__(document, **kwargs)
         self._cache: Dict[str, Tuple[datetime.datetime, QuerySet]] = {}
 

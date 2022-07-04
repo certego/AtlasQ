@@ -5,7 +5,7 @@ from mongomock import command_cursor
 from mongomock.command_cursor import CommandCursor
 
 from atlasq import AtlasQ
-from atlasq.queryset import AtlasIndex
+from atlasq.queryset import AtlasIndex, AtlasIndexFieldError
 from atlasq.queryset.queryset import AtlasQuerySet
 from tests.test_base import TestBaseCase
 
@@ -87,15 +87,9 @@ class TestQuerySet(TestBaseCase):
                         "compound": {
                             "filter": [
                                 {
-                                    "compound": {
-                                        "filter": [
-                                            {
-                                                "text": {
-                                                    "query": "test.com",
-                                                    "path": "name",
-                                                }
-                                            }
-                                        ]
+                                    "text": {
+                                        "query": "test.com",
+                                        "path": "name",
                                     }
                                 }
                             ]
@@ -175,5 +169,5 @@ class TestQuerySet(TestBaseCase):
         ):
             self.assertEqual(self.base.get(name="test.com").name, self.obs.name)
         self.base.index.ensured = True
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AtlasIndexFieldError):
             self.base.get(another_field="test.com")

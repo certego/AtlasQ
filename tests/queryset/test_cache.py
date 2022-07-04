@@ -42,7 +42,7 @@ class TestAtlasCache(TestBaseCase):
 class TestAtlasDbCache(TestAtlasCache):
     @cached_property
     def cache(self):
-        return AtlasDbCache(MyDocument, MyDocument._get_collection(), self.db_alias)
+        return AtlasDbCache(MyDocument, self.db_alias)
 
     def setUp(self):
         super().setUp()
@@ -91,7 +91,7 @@ class TestAtlasDbCache(TestAtlasCache):
 class TestAtlasRamCache(TestAtlasCache):
     @cached_property
     def cache(self):
-        return AtlasRamCache(MyDocument, MyDocument._get_collection())
+        return AtlasRamCache(MyDocument)
 
     def test_set(self):
         self.cache.set(self.aggregations, [self.doc], max_minutes=2)
@@ -129,7 +129,7 @@ class TestAtlasRamCache(TestAtlasCache):
 class TestAtlasCache(TestAtlasCache):
     @cached_property
     def cache(self):
-        return AtlasCache(MyDocument, MyDocument._get_collection(), self.db_alias)
+        return AtlasCache(MyDocument, self.db_alias)
 
     def setUp(self):
         super().setUp()

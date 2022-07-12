@@ -29,6 +29,7 @@ class TestQuerySet(TestBaseCase):
             classification="domain",
             related_threat=["phishing"],
         )
+        self.base.index.ensured = False
 
     def test_clone(self):
         self.base._count = True

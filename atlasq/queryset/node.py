@@ -21,7 +21,7 @@ class AtlasQ(Q):
         qs = getattr(document, "atlas", None)
         if qs is None:
             raise ValueError("Document must set `atlas` to an AtlasManager")
-        atlas_index = qs.atlas_index
+        atlas_index = qs.index
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
         query = query.accept(AtlasQueryCompilerVisitor(document, atlas_index))
@@ -51,7 +51,7 @@ class AtlasQCombination(QCombination):
         qs = getattr(document, "atlas", None)
         if qs is None:
             raise ValueError("Document must set `atlas` to an AtlasManager")
-        atlas_index = qs.atlas_index
+        atlas_index = qs.index
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
         query = query.accept(AtlasQueryCompilerVisitor(document, atlas_index))

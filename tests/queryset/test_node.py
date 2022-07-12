@@ -24,6 +24,7 @@ class TestAtlasQ(TestBaseCase):
     def test_to_query(self):
         class MyDocument(Document):
             name = fields.StringField()
+
             atlas = AtlasManager("test")
 
         q = AtlasQ(name="test")

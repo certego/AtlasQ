@@ -4,9 +4,8 @@ from mongoengine import Document, ListField, StringField
 from mongomock import command_cursor
 from mongomock.command_cursor import CommandCursor
 
-from atlasq import AtlasQ
-from atlasq.queryset import AtlasIndex, AtlasIndexFieldError
-from atlasq.queryset.queryset import AtlasQuerySet
+from atlasq import AtlasManager, AtlasQ
+from atlasq.queryset import AtlasIndexFieldError
 from tests.test_base import TestBaseCase
 
 
@@ -16,13 +15,14 @@ class MyDocument(Document):
     classification = StringField(required=True)
     related_threat = ListField(StringField())
 
+    atlas = AtlasManager("test")
+
 
 class TestQuerySet(TestBaseCase):
     def setUp(self) -> None:
         super(TestQuerySet, self).setUp()
         MyDocument.objects.all().delete()
-        self.base = AtlasQuerySet(MyDocument, MyDocument._get_collection())
-        self.base.index = AtlasIndex("test")
+        self.base = MyDocument.atlas
         self.obs = MyDocument(
             name="test.com",
             md5="d8cfbe774890e3b523ce584ce640a452",

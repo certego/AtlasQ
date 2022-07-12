@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from mongoengine import Document, fields
 from mongoengine.context_managers import switch_collection, switch_db
 
+from atlasq import AtlasManager
 from atlasq.queryset.cache import AtlasCache, AtlasDbCache, AtlasRamCache
 from tests.test_base import TestBaseCase
 
@@ -13,6 +14,8 @@ class MyDocument(Document):
     name = fields.StringField(required=True)
     md5 = fields.StringField(required=True)
     classification = fields.StringField(required=True)
+
+    atlas = AtlasManager("test")
 
 
 class TestAtlasCache(TestBaseCase):

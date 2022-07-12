@@ -18,8 +18,8 @@ class AtlasQ(Q):
         return self.AND
 
     def to_query(self, document) -> List[Dict]:  # pylint: disable=arguments-differ
-        qs = getattr(document, "atlas")
-        if not qs:
+        qs = getattr(document, "atlas", None)
+        if qs is None:
             raise ValueError("Document must set `atlas` to an AtlasManager")
         atlas_index = qs.atlas_index
         logger.debug(f"to_query {self.__class__.__name__} {document}")
@@ -48,8 +48,8 @@ class AtlasQCombination(QCombination):
     def to_query(  # pylint: disable=arguments-differ
         self, document
     ) -> Tuple[Dict, List[Dict]]:
-        qs = getattr(document, "atlas")
-        if not qs:
+        qs = getattr(document, "atlas", None)
+        if qs is None:
             raise ValueError("Document must set `atlas` to an AtlasManager")
         atlas_index = qs.atlas_index
         logger.debug(f"to_query {self.__class__.__name__} {document}")

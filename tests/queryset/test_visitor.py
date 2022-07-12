@@ -2,6 +2,7 @@ import json
 
 from mongoengine import Document, StringField
 
+from atlasq import AtlasManager
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.visitor import AtlasQueryCompilerVisitor
@@ -13,6 +14,8 @@ class MyDocument(Document):
     key2 = StringField()
     key3 = StringField()
     key4 = StringField()
+
+    atlas = AtlasManager("test")
 
 
 class TestAtlasQueryCompilerVisitor(TestBaseCase):

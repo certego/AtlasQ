@@ -43,7 +43,7 @@ class AtlasQuerySet(QuerySet):
     def _aggrs(self):
         # corresponding of _query for us
         if self._aggrs_query is None:
-            self._aggrs_query = self._query_obj.to_query(self._document, self.index)
+            self._aggrs_query = self._query_obj.to_query(self._document)
             if self._aggrs_query:
                 if self._count:
                     self._aggrs_query[0]["$search"]["count"] = {"type": "total"}

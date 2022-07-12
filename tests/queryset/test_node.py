@@ -1,6 +1,6 @@
 from mongoengine import Document, fields
 
-from atlasq.queryset.index import AtlasIndex
+from atlasq import AtlasManager
 from atlasq.queryset.node import AtlasQ, AtlasQCombination
 from tests.test_base import TestBaseCase
 
@@ -25,8 +25,10 @@ class TestAtlasQ(TestBaseCase):
         class MyDocument(Document):
             name = fields.StringField()
 
+            atlas = AtlasManager("test")
+
         q = AtlasQ(name="test")
-        res = q.to_query(MyDocument, AtlasIndex("test"))
+        res = q.to_query(MyDocument)
         self.assertIsInstance(res, list)
         self.assertEqual(1, len(res))
         filters, *aggregations = res

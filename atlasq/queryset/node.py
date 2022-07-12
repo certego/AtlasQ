@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Union
 from mongoengine import Q
 from mongoengine.queryset.visitor import QCombination
 
+from atlasq import AtlasQuerySet
 from atlasq.queryset.visitor import (
     AtlasQueryCompilerVisitor,
     AtlasSimplificationVisitor,
@@ -21,6 +22,8 @@ class AtlasQ(Q):
         qs = getattr(document, "atlas", None)
         if qs is None:
             raise ValueError("Document must set `atlas` to an AtlasManager")
+        elif not isinstance(qs, AtlasQuerySet):
+            return super().to_query(document)
         atlas_index = qs.index
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
@@ -51,6 +54,8 @@ class AtlasQCombination(QCombination):
         qs = getattr(document, "atlas", None)
         if qs is None:
             raise ValueError("Document must set `atlas` to an AtlasManager")
+        elif not isinstance(qs, AtlasQuerySet):
+            return super().to_query(document)
         atlas_index = qs.index
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())

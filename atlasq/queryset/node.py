@@ -4,7 +4,6 @@ from typing import Dict, List, Tuple, Union
 from mongoengine import Q
 from mongoengine.queryset.visitor import QCombination
 
-from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.visitor import (
     AtlasQueryCompilerVisitor,
     AtlasSimplificationVisitor,
@@ -18,9 +17,11 @@ class AtlasQ(Q):
     def operation(self):
         return self.AND
 
-    def to_query(  # pylint: disable=arguments-differ
-        self, document, atlas_index: AtlasIndex
-    ) -> List[Dict]:
+    def to_query(self, document) -> List[Dict]:  # pylint: disable=arguments-differ
+        qs = getattr(document, "atlas")
+        if not qs:
+            raise ValueError("Document must set `atlas` to an AtlasManager")
+        atlas_index = qs.atlas_index
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
         query = query.accept(AtlasQueryCompilerVisitor(document, atlas_index))
@@ -45,10 +46,12 @@ class AtlasQCombination(QCombination):
         return AtlasQCombination(result.operation, result.children)
 
     def to_query(  # pylint: disable=arguments-differ
-        self, document, atlas_index: Union[None, AtlasIndex] = None
+        self, document
     ) -> Tuple[Dict, List[Dict]]:
-        if AtlasIndex is None:
-            return super().to_query(document)
+        qs = getattr(document, "atlas")
+        if not qs:
+            raise ValueError("Document must set `atlas` to an AtlasManager")
+        atlas_index = qs.atlas_index
         logger.debug(f"to_query {self.__class__.__name__} {document}")
         query = self.accept(AtlasSimplificationVisitor())
         query = query.accept(AtlasQueryCompilerVisitor(document, atlas_index))

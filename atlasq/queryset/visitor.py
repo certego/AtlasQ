@@ -33,7 +33,6 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
         affirmatives = []
         negatives = []
         aggregations = []
-
         for child in combination.children:
             filters, *child_aggregations = child
             try:
@@ -47,6 +46,9 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
                     affirmatives.extend(filters["compound"]["filter"])
                 if "mustNot" in filters["compound"]:
                     negatives.extend(filters["compound"]["mustNot"])
+                if "should" in filters["compound"]:
+                    filters.pop("index")
+                    affirmatives.append(filters)
             aggregations.extend(child_aggregations)
         result = {"compound": {}}
         if affirmatives:

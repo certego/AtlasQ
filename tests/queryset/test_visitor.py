@@ -14,12 +14,13 @@ class MyDocument(Document):
     key2 = StringField()
     key3 = StringField()
     key4 = StringField()
+    key5 = StringField()
 
     atlas = AtlasManager("test")
 
 
 class TestAtlasQueryCompilerVisitor(TestBaseCase):
-    def visit_combination_and_or(self):
+    def test_visit_combination_and_or(self):
         q1 = AtlasQ(key="value")
 
         q2 = AtlasQ(key2="value2")
@@ -28,7 +29,12 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         q4 = AtlasQ(key4="value4")
 
         q5 = q3 & q4
-        filters, *aggregations = q5.accept(
+
+        q6 = AtlasQ(key5="value5")
+
+        q7 = q5 | q6
+
+        filters, *aggregations = q7.accept(
             AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
         )
         filters = filters["$search"]
@@ -38,46 +44,54 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         self.assertEqual(
             {
                 "compound": {
-                    "filter": [
+                    "should": [
                         {
                             "compound": {
-                                "should": [
+                                "filter": [
                                     {
                                         "compound": {
-                                            "filter": [
+                                            "should": [
                                                 {
-                                                    "text": {
-                                                        "query": "value",
-                                                        "path": "key",
+                                                    "compound": {
+                                                        "filter": [
+                                                            {
+                                                                "text": {
+                                                                    "query": "value",
+                                                                    "path": "key",
+                                                                }
+                                                            }
+                                                        ]
                                                     }
-                                                }
-                                            ]
+                                                },
+                                                {
+                                                    "compound": {
+                                                        "filter": [
+                                                            {
+                                                                "text": {
+                                                                    "query": "value2",
+                                                                    "path": "key2",
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                            ],
+                                            "minimumShouldMatch": 1,
                                         }
                                     },
-                                    {
-                                        "compound": {
-                                            "filter": [
-                                                {
-                                                    "text": {
-                                                        "query": "value2",
-                                                        "path": "key2",
-                                                    }
-                                                }
-                                            ]
-                                        }
-                                    },
-                                ],
-                                "minimumShouldMatch": 1,
+                                    {"text": {"query": "value4", "path": "key4"}},
+                                ]
                             }
                         },
                         {
                             "compound": {
                                 "filter": [
-                                    {"text": {"query": "value4", "path": "key4"}},
+                                    {"text": {"query": "value5", "path": "key5"}}
                                 ]
                             }
                         },
                     ],
+                    "minimumShouldMatch": 1,
                 }
             },
             filters,

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class AtlasQuerySet(QuerySet):
     def _clone_into(self, new_qs):
-        copy_props = ("index", "_aggrs_query", "_search_result", "_count")
+        copy_props = ("index", "_aggrs_query", "_search_result", "_count", "_only_id")
         qs = super()._clone_into(new_qs)
         for prop in copy_props:
             val = getattr(self, prop)
@@ -29,6 +29,7 @@ class AtlasQuerySet(QuerySet):
         self._aggrs_query: List[Dict[str, Any]] = None
         self._search_result: CommandCursor = None
         self._count: bool = False
+        self._only_id: bool = False
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access
@@ -74,6 +75,7 @@ class AtlasQuerySet(QuerySet):
         if q_obj is not None:
             q &= q_obj
         logger.debug(q)
+        self._only_id = True
         qs = super().__call__(q)
         return qs
 
@@ -82,7 +84,8 @@ class AtlasQuerySet(QuerySet):
             if self._query_obj:
                 return [{"$project": {"meta": "$$SEARCH_META"}}]
             return [{"$count": "count"}]
-
+        if self._only_id:
+            return [{"$project": {"_id": 1}}]
         loaded_fields = self._loaded_fields.as_dict()
         logger.debug(loaded_fields)
         if loaded_fields:

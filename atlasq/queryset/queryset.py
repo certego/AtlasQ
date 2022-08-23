@@ -64,7 +64,7 @@ class AtlasQuerySet(QuerySet):
             return None
         # unfortunately here we have to actually run the query to get the objects
         # i do not see other way to do this atm
-        self._query_obj = Q(id__in=[obj["_id"] for obj in self._search_result if obj])
+        self._query_obj = Q(id__in=list(self._search_result))
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 

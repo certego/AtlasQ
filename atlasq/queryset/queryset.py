@@ -79,9 +79,10 @@ class AtlasQuerySet(QuerySet):
     def filter(
         self,
         *q_objs,
+        return_objects: bool = True,
         **query,
     ):
-        return super(AtlasQuerySet, self).filter(q_objs, query)
+        return self.__call__(*q_objs, return_objects, **query)
 
     def __call__(self, q_obj=None, return_objects: bool = True, **query):
         if self.index is None:

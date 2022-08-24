@@ -81,15 +81,7 @@ class AtlasQuerySet(QuerySet):
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 
-    def filter(
-        self,
-        *q_objs,
-        return_objects: bool = True,
-        **query,
-    ):
-        return self.__call__(*q_objs, return_objects, **query)
-
-    def __call__(self, q_obj=None, return_objects: bool = True, **query):
+    def __call__(self, q_obj=None, **query):
         if self.index is None:
             raise AtlasIndexError("Index is not set")
 
@@ -98,7 +90,6 @@ class AtlasQuerySet(QuerySet):
             q &= q_obj
         logger.debug(q)
         qs = super().__call__(q)
-        qs._return_objects = return_objects
         return qs
 
     def _get_projections(self) -> List[Dict[str, Any]]:

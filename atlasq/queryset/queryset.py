@@ -46,6 +46,11 @@ class AtlasQuerySet(QuerySet):
             user, password, group_id, cluster_name, db_name, collection_name
         )
 
+    def __iter__(self):
+        if not self._return_objects:
+            return iter(self._cursor_obj)
+        return super().__iter__()
+
     @property
     def _aggrs(self):
         # corresponding of _query for us

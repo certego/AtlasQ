@@ -14,7 +14,13 @@ logger = logging.getLogger(__name__)
 
 class AtlasQuerySet(QuerySet):
     def _clone_into(self, new_qs):
-        copy_props = ("index", "_aggrs_query", "_search_result", "_count", "_only_id")
+        copy_props = (
+            "index",
+            "_aggrs_query",
+            "_search_result",
+            "_count",
+            "_return_objects",
+        )
         qs = super()._clone_into(new_qs)
         for prop in copy_props:
             val = getattr(self, prop)
@@ -29,7 +35,7 @@ class AtlasQuerySet(QuerySet):
         self._aggrs_query: List[Dict[str, Any]] = None
         self._search_result: CommandCursor = None
         self._count: bool = False
-        self._only_id: bool = False
+        self._return_objects: bool = True
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access
@@ -62,21 +68,31 @@ class AtlasQuerySet(QuerySet):
     def _query(self):
         if not self._search_result:
             return None
+        if not self._return_objects:
+            return self._search_result
         # unfortunately here we have to actually run the query to get the objects
         # i do not see other way to do this atm
         self._query_obj = Q(id__in=list(self._search_result))
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 
-    def __call__(self, q_obj=None, **query):
+    def filter(
+        self,
+        *q_objs,
+        **query,
+    ):
+        return super(AtlasQuerySet, self).filter(q_objs, query)
+
+    def __call__(self, q_obj=None, return_objects: bool = True, **query):
         if self.index is None:
             raise AtlasIndexError("Index is not set")
+
         q = AtlasQ(**query)
         if q_obj is not None:
             q &= q_obj
         logger.debug(q)
-        self._only_id = True
         qs = super().__call__(q)
+        qs._return_objects = return_objects
         return qs
 
     def _get_projections(self) -> List[Dict[str, Any]]:
@@ -84,8 +100,6 @@ class AtlasQuerySet(QuerySet):
             if self._query_obj:
                 return [{"$project": {"meta": "$$SEARCH_META"}}]
             return [{"$count": "count"}]
-        if self._only_id:
-            return [{"$project": {"_id": 1}}]
         loaded_fields = self._loaded_fields.as_dict()
         logger.debug(loaded_fields)
         if loaded_fields:

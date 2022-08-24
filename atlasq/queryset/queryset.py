@@ -62,14 +62,14 @@ class AtlasQuerySet(QuerySet):
     def _cursor(self):
         if not self._search_result:
             self._search_result = self.aggregate(self._aggrs)
+        if not self._return_objects:
+            self._cursor_obj = self._search_result
         return super()._cursor
 
     @property
     def _query(self):
         if not self._search_result:
             return None
-        if not self._return_objects:
-            return self._search_result
         # unfortunately here we have to actually run the query to get the objects
         # i do not see other way to do this atm
         self._query_obj = Q(id__in=list(self._search_result))

@@ -48,7 +48,7 @@ class AtlasQuerySet(QuerySet):
 
     def __iter__(self):
         if not self._return_objects:
-            return iter(self._cursor_obj)
+            return iter(self._cursor)
         return super().__iter__()
 
     @property

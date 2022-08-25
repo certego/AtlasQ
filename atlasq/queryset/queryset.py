@@ -83,6 +83,8 @@ class AtlasQuerySet(QuerySet):
 
     def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
         self._return_objects = False
+        if isinstance(pipeline, dict):
+            pipeline = [pipeline]
         return super().aggregate(self._aggrs + pipeline, *suppl_pipeline)
 
     def __call__(self, q_obj=None, **query):
@@ -109,9 +111,8 @@ class AtlasQuerySet(QuerySet):
 
     def count(self, with_limit_and_skip=False):
         # todo manage limit and skip
-        qs = self.clone()
-        qs._count = True  # pylint: disable=protected-access
-        cursor = qs.aggregate(qs._aggrs)  # pylint: disable=protected-access
+        self._count = True  # pylint: disable=protected-access
+        cursor = super().aggregate(self._aggrs)  # pylint: disable=protected-access
         try:
             count = next(cursor)
         except StopIteration:

@@ -66,7 +66,7 @@ class AtlasQuerySet(QuerySet):
     @property
     def _cursor(self):
         if not self._search_result:
-            self._search_result = self.aggregate(self._aggrs)
+            self._search_result = super().aggregate(self._aggrs)
         if not self._return_objects:
             self._cursor_obj = self._search_result
         return super()._cursor
@@ -80,6 +80,12 @@ class AtlasQuerySet(QuerySet):
         self._query_obj = Q(id__in=[obj["_id"] for obj in self._search_result if obj])
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
+
+    def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
+        self._return_objects = False
+        if isinstance(pipeline, dict):
+            pipeline = [pipeline]
+        return super().aggregate(self._aggrs + pipeline, *suppl_pipeline)
 
     def __call__(self, q_obj=None, **query):
         if self.index is None:
@@ -105,9 +111,8 @@ class AtlasQuerySet(QuerySet):
 
     def count(self, with_limit_and_skip=False):
         # todo manage limit and skip
-        qs = self.clone()
-        qs._count = True  # pylint: disable=protected-access
-        cursor = qs.aggregate(qs._aggrs)  # pylint: disable=protected-access
+        self._count = True  # pylint: disable=protected-access
+        cursor = super().aggregate(self._aggrs)  # pylint: disable=protected-access
         try:
             count = next(cursor)
         except StopIteration:

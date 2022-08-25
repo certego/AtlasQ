@@ -66,7 +66,7 @@ class AtlasQuerySet(QuerySet):
     @property
     def _cursor(self):
         if not self._search_result:
-            self._search_result = self.aggregate(self._aggrs)
+            self._search_result = super().aggregate(self._aggrs)
         if not self._return_objects:
             self._cursor_obj = self._search_result
         return super()._cursor
@@ -80,6 +80,10 @@ class AtlasQuerySet(QuerySet):
         self._query_obj = Q(id__in=[obj["_id"] for obj in self._search_result if obj])
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
+
+    def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
+        self._return_objects = False
+        return super().aggregate(self._aggrs + pipeline)
 
     def __call__(self, q_obj=None, **query):
         if self.index is None:

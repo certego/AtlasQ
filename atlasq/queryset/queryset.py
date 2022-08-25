@@ -83,7 +83,7 @@ class AtlasQuerySet(QuerySet):
 
     def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
         self._return_objects = False
-        return super().aggregate(self._aggrs + pipeline)
+        return super().aggregate(self._aggrs + pipeline, *suppl_pipeline)
 
     def __call__(self, q_obj=None, **query):
         if self.index is None:

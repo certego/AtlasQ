@@ -36,12 +36,21 @@ class AtlasTransform:
         "iregex",
         "match",
         "is",
+        "text",
     ]
     negative_keywords = ["ne", "nin", "not"]
     exists_keywords = ["exists"]
     range_keywords = ["gt", "gte", "lt", "lte"]
     equals_keywords = ["exact", "iexact", "eq"]
-    text_keywords = ["in", "nin", "contains", "icontains", "iwholeword", "wholeword"]
+    text_keywords = [
+        "in",
+        "nin",
+        "contains",
+        "icontains",
+        "iwholeword",
+        "wholeword",
+        "text",
+    ]
     size_keywords = ["size"]
     not_converted = [
         "all",
@@ -57,6 +66,9 @@ class AtlasTransform:
 
     def __init__(self, atlas_query):
         self.atlas_query = atlas_query
+
+    def _match(self, path: str, value: str) -> Dict:
+        return {"$match": {path: value}}
 
     def _exists(self, path: str, empty: bool) -> Dict:
         # false True == true == eq
@@ -186,6 +198,8 @@ class AtlasTransform:
                     self._ensure_keyword_is_indexed(atlas_index, path)
                 if isinstance(value, bool):
                     obj = self._equals(path, value)
+                elif isinstance(value, str):
+                    obj = self._match(path, value)
                 else:
                     obj = self._text(path, value)
 

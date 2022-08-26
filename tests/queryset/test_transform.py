@@ -120,7 +120,7 @@ class TestTransformSteps(TestBaseCase):
         self.assertEqual(res["equals"]["path"], "field")
         self.assertEqual(res["equals"]["value"], "aaa")
 
-    def test__text(self):
+    def test__search(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query)
         res = t._text("field", "aaa")
@@ -130,7 +130,7 @@ class TestTransformSteps(TestBaseCase):
         self.assertEqual(res["text"]["path"], "field")
         self.assertEqual(res["text"]["query"], "aaa")
 
-    def test__text_none(self):
+    def test__search_none(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query)
         with self.assertRaises(AtlasFieldError):
@@ -378,8 +378,26 @@ class TestAtlasQ(TestBaseCase):
             json.dumps(positive, indent=4, default=str),
         )
 
+    def test_atlas_q_not_whole_word(self):
+        q1 = AtlasQ(key__not__wholeword="value")
+        positive, negative, aggregations = AtlasTransform(q1.query).transform(
+            AtlasIndex("test")
+        )
+        self.assertEqual([], aggregations)
+        self.assertEqual(
+            [
+                {"text": {"path": "key", "query": "value"}},
+            ],
+            negative,
+        )
+        self.assertEqual(
+            [],
+            positive,
+            json.dumps(positive, indent=4),
+        )
+
     def test_atlas_q_field_start_with_keyword(self):
-        q1 = AtlasQ(key__internal__in__text=["value"])
+        q1 = AtlasQ(key__internal__in__search=["value"])
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -394,7 +412,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_ne_embedded_document(self):
-        q1 = AtlasQ(key__internal__key__ne__text="value")
+        q1 = AtlasQ(key__internal__key__ne__search="value")
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -409,7 +427,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_embedded_document(self):
-        q1 = AtlasQ(key__internal__key__text="value")
+        q1 = AtlasQ(key__internal__key__search="value")
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -424,7 +442,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_nin(self):
-        q1 = AtlasQ(key__nin__text=["value", "value2"])
+        q1 = AtlasQ(key__nin__search=["value", "value2"])
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -439,7 +457,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_negative(self):
-        q1 = AtlasQ(key__ne__text="value")
+        q1 = AtlasQ(key__ne__search="value")
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -455,7 +473,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q(self):
-        q1 = AtlasQ(key__text="value", key2__text="value2")
+        q1 = AtlasQ(key__search="value", key2__search="value2")
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )

@@ -36,7 +36,7 @@ class AtlasTransform:
         "iregex",
         "match",
         "is",
-        "text",
+        "search",
     ]
     negative_keywords = ["ne", "nin", "not"]
     exists_keywords = ["exists"]
@@ -47,7 +47,7 @@ class AtlasTransform:
         "icontains",
         "iwholeword",
         "wholeword",
-        "text",
+        "search",
     ]
     size_keywords = ["size"]
     not_converted = [

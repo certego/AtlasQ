@@ -44,9 +44,9 @@ class TestTransformSteps(TestBaseCase):
             AtlasIndex("test")
         )
 
-        self.assertEqual(positive, [{"text": {"query": ["aaa"], "path": "f"}}])
+        self.assertEqual(positive, [])
         self.assertEqual(negative, [])
-        self.assertEqual(aggregations, [])
+        self.assertEqual(aggregations, [{"$match": {"f": {"$in": ["aaa"]}}}])
 
     def test__exists_empty(self):
         q = AtlasQ(f=3)
@@ -244,12 +244,12 @@ class TestAtlasQ(TestBaseCase):
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
-        self.assertEqual(aggregations, [])
+        self.assertEqual(
+            aggregations, [{"$match": {"key": {"$not": {"$in": ["", None]}}}}]
+        )
         self.assertEqual(positive, [])
         self.assertEqual(
-            [
-                {"text": {"path": "key", "query": ["", None]}},
-            ],
+            [],
             negative,
             json.dumps(negative, indent=4),
         )
@@ -379,7 +379,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_field_start_with_keyword(self):
-        q1 = AtlasQ(key__internal__in=["value"])
+        q1 = AtlasQ(key__internal__in__text=["value"])
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -424,7 +424,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_nin(self):
-        q1 = AtlasQ(key__nin=["value", "value2"])
+        q1 = AtlasQ(key__nin__text=["value", "value2"])
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )

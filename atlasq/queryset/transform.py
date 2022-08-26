@@ -43,8 +43,6 @@ class AtlasTransform:
     range_keywords = ["gt", "gte", "lt", "lte"]
     equals_keywords = ["exact", "iexact", "eq"]
     text_keywords = [
-        "in",
-        "nin",
         "contains",
         "icontains",
         "iwholeword",
@@ -67,11 +65,14 @@ class AtlasTransform:
     def __init__(self, atlas_query):
         self.atlas_query = atlas_query
 
-    def _match(self, path: str, value: str, to_go: int) -> Dict:
+    def _match(self, path: str, value: Union[str, List], to_go: int) -> Dict:
+
+        operator = "$in" if isinstance(value, list) else "$eq"
+
         if to_go == -1:
-            return {"$match": {path: {"$not": {"$eq": value}}}}
+            return {"$match": {path: {"$not": {operator: value}}}}
         else:
-            return {"$match": {path: {"$eq": value}}}
+            return {"$match": {path: {operator: value}}}
 
     def _exists(self, path: str, empty: bool) -> Dict:
         # false True == true == eq
@@ -201,7 +202,7 @@ class AtlasTransform:
                     self._ensure_keyword_is_indexed(atlas_index, path)
                 if isinstance(value, bool):
                     obj = self._equals(path, value)
-                elif isinstance(value, str):
+                elif isinstance(value, str) or isinstance(value, list):
                     other_aggregations.append(self._match(path, value, to_go))
                 else:
                     obj = self._text(path, value)

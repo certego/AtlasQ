@@ -75,6 +75,9 @@ class AtlasQuerySet(QuerySet):
             self._search_result = super().aggregate(self._aggrs)
             if self.save_execution_time:
                 execution_time = datetime.now() - nnow()
+                logger.info(
+                    f"Execution time is {execution_time.total_seconds()} seconds"
+                )
         if not self._return_objects:
             self._cursor_obj = self._search_result
         cursor = super()._cursor

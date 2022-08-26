@@ -172,6 +172,32 @@ class TestTransformSteps(TestBaseCase):
 
 
 class TestAtlasQ(TestBaseCase):
+    def test_match(self):
+        q1 = AtlasQ(key__internal__key="test")
+        positive, negative, aggregations = AtlasTransform(q1.query).transform(
+            AtlasIndex("test")
+        )
+        self.assertEqual(positive, [])
+        self.assertEqual(negative, [])
+        self.assertEqual(
+            {"$match": {"key.internal.key": {"$eq": "test"}}},
+            aggregations[0],
+            json.dumps(aggregations, indent=4),
+        )
+
+    def test_match_negative(self):
+        q1 = AtlasQ(key__internal__key__ne="test")
+        positive, negative, aggregations = AtlasTransform(q1.query).transform(
+            AtlasIndex("test")
+        )
+        self.assertEqual(positive, [])
+        self.assertEqual(negative, [])
+        self.assertEqual(
+            {"$match": {"key.internal.key": {"$not": {"$eq": "test"}}}},
+            aggregations[0],
+            json.dumps(aggregations, indent=4),
+        )
+
     def test_size_val(self):
         q1 = AtlasQ(key__size=1)
         with self.assertRaises(NotImplementedError):
@@ -368,7 +394,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_ne_embedded_document(self):
-        q1 = AtlasQ(key__internal__key__ne="value")
+        q1 = AtlasQ(key__internal__key__ne__text="value")
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -383,7 +409,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_embedded_document(self):
-        q1 = AtlasQ(key__internal__key="value")
+        q1 = AtlasQ(key__internal__key__text="value")
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -413,7 +439,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_negative(self):
-        q1 = AtlasQ(key__ne="value")
+        q1 = AtlasQ(key__ne__text="value")
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -429,7 +455,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q(self):
-        q1 = AtlasQ(key="value", key2="value2")
+        q1 = AtlasQ(key__text="value", key2__text="value2")
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )

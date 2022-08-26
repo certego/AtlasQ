@@ -67,8 +67,11 @@ class AtlasTransform:
     def __init__(self, atlas_query):
         self.atlas_query = atlas_query
 
-    def _match(self, path: str, value: str) -> Dict:
-        return {"$match": {path: value}}
+    def _match(self, path: str, value: str, to_go: int) -> Dict:
+        if to_go == -1:
+            return {"$match": {path: {"$not": {"$eq": value}}}}
+        else:
+            return {"$match": {path: {"$eq": value}}}
 
     def _exists(self, path: str, empty: bool) -> Dict:
         # false True == true == eq
@@ -199,7 +202,7 @@ class AtlasTransform:
                 if isinstance(value, bool):
                     obj = self._equals(path, value)
                 elif isinstance(value, str):
-                    obj = self._match(path, value)
+                    other_aggregations.append(self._match(path, value, to_go))
                 else:
                     obj = self._text(path, value)
 

@@ -107,14 +107,18 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         )
         filters = filters["$search"]
         filters.pop("index")
-        self.assertEqual([], aggregations)
+        self.assertEqual(
+            [
+                {"$match": {"key2": {"$eq": "value2"}}},
+                {"$match": {"key3": {"$eq": "value3"}}},
+            ],
+            aggregations,
+        )
         self.assertEqual(
             {
                 "compound": {
                     "filter": [
                         {"text": {"path": "key", "query": "value"}},
-                        {"$match": {"key2": "value2"}},
-                        {"$match": {"key3": "value3"}},
                         {"text": {"path": "key4", "query": "value4"}},
                     ],
                 }

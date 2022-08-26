@@ -20,6 +20,7 @@ class AtlasQuerySet(QuerySet):
             "_search_result",
             "_count",
             "_return_objects",
+            "save_execution_time",
         )
         qs = super()._clone_into(new_qs)
         for prop in copy_props:
@@ -36,6 +37,7 @@ class AtlasQuerySet(QuerySet):
         self._search_result: CommandCursor = None
         self._count: bool = False
         self._return_objects: bool = True
+        self.save_execution_time: bool = False
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access
@@ -60,16 +62,25 @@ class AtlasQuerySet(QuerySet):
                 if self._count:
                     self._aggrs_query[0]["$search"]["count"] = {"type": "total"}
             self._aggrs_query += self._get_projections()
-            logger.debug(self._aggrs_query)
+            logger.info(self._aggrs_query)
         return self._aggrs_query
 
     @property
     def _cursor(self):
         if not self._search_result:
+            if self.save_execution_time:
+                from datetime import datetime
+
+                nnow = datetime.now()
             self._search_result = super().aggregate(self._aggrs)
+            if self.save_execution_time:
+                execution_time = datetime.now() - nnow()
         if not self._return_objects:
             self._cursor_obj = self._search_result
-        return super()._cursor
+        cursor = super()._cursor
+        if self.save_execution_time:
+            cursor.execution_time = execution_time
+        return cursor
 
     @property
     def _query(self):

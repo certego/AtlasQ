@@ -21,16 +21,16 @@ class MyDocument(Document):
 
 class TestAtlasQueryCompilerVisitor(TestBaseCase):
     def test_visit_combination_and_or(self):
-        q1 = AtlasQ(key__text="value")
+        q1 = AtlasQ(key__search="value")
 
-        q2 = AtlasQ(key2__text="value2")
+        q2 = AtlasQ(key2__search="value2")
         q3 = q1 | q2
 
-        q4 = AtlasQ(key4__text="value4")
+        q4 = AtlasQ(key4__search="value4")
 
         q5 = q3 & q4
 
-        q6 = AtlasQ(key5__text="value5")
+        q6 = AtlasQ(key5__search="value5")
 
         q7 = q5 | q6
 
@@ -99,8 +99,8 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         )
 
     def test_combination_and(self):
-        q1 = AtlasQ(key__text="value", key2="value2")
-        q2 = AtlasQ(key3="value3", key4__text="value4")
+        q1 = AtlasQ(key__search="value", key2="value2")
+        q2 = AtlasQ(key3="value3", key4__search="value4")
         q5 = q1 & q2
         filters, *aggregations = q5.accept(
             AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
@@ -128,8 +128,8 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         )
 
     def test_atlas_q_or(self):
-        q1 = AtlasQ(key__text="value", key2__text="value2")
-        q2 = AtlasQ(key3__text="value3", key4__text="value4")
+        q1 = AtlasQ(key__search="value", key2__search="value2")
+        q2 = AtlasQ(key3__search="value3", key4__search="value4")
         q5 = q1 | q2
         filters, *aggregations = q5.accept(
             AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))

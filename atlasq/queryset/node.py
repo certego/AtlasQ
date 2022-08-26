@@ -24,6 +24,15 @@ class AtlasQ(Q):
         if qs is None:
             raise ValueError("Document must set `atlas` to an AtlasManager")
         if not isinstance(qs, AtlasQuerySet):
+            new_query = {}
+            # search is possible to use only on atlas
+            for key, value in self.query:
+                key = key.rsplit("__")
+                if key[-1] == "search":
+                    key = key[:-1]
+                key = key.join("__")
+                new_query[key] = value
+            self.query = new_query
             return super().to_query(document)
         atlas_index = qs.index
         logger.debug(f"to_query {self.__class__.__name__} {document}")

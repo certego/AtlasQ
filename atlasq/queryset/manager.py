@@ -18,12 +18,16 @@ class AtlasManager(QuerySetManager):
         res = super().default
         return res
 
-    def __init__(self, atlas_index: Union[str, None]):
+    def __init__(
+        self, atlas_index: Union[str, None], save_execution_time: bool = False
+    ):
         super().__init__()
         self._index = AtlasIndex(atlas_index) if atlas_index else None
+        self._save_execution_time = save_execution_time
 
     def __get__(self, instance, owner):
         queryset = super().__get__(instance, owner)
         if isinstance(queryset, AtlasQuerySet):
             queryset.index = self._index
+            queryset.save_execution_time = self._save_execution_time
         return queryset

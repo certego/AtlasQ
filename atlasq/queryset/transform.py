@@ -71,8 +71,7 @@ class AtlasTransform:
 
         if to_go == -1:
             return {"$match": {path: {"$not": {operator: value}}}}
-        else:
-            return {"$match": {path: {operator: value}}}
+        return {"$match": {path: {operator: value}}}
 
     def _exists(self, path: str, empty: bool) -> Dict:
         # false True == true == eq
@@ -202,7 +201,7 @@ class AtlasTransform:
                     self._ensure_keyword_is_indexed(atlas_index, path)
                 if isinstance(value, bool):
                     obj = self._equals(path, value)
-                elif isinstance(value, str) or isinstance(value, list):
+                elif isinstance(value, (list, str)):
                     other_aggregations.append(self._match(path, value, to_go))
                 else:
                     obj = self._text(path, value)

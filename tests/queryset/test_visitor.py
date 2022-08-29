@@ -21,16 +21,16 @@ class MyDocument(Document):
 
 class TestAtlasQueryCompilerVisitor(TestBaseCase):
     def test_visit_combination_and_or(self):
-        q1 = AtlasQ(key__search="value")
+        q1 = AtlasQ(key="value")
 
-        q2 = AtlasQ(key2__search="value2")
+        q2 = AtlasQ(key2="value2")
         q3 = q1 | q2
 
-        q4 = AtlasQ(key4__search="value4")
+        q4 = AtlasQ(key4="value4")
 
         q5 = q3 & q4
 
-        q6 = AtlasQ(key5__search="value5")
+        q6 = AtlasQ(key5="value5")
 
         q7 = q5 | q6
 
@@ -99,26 +99,22 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         )
 
     def test_combination_and(self):
-        q1 = AtlasQ(key__search="value", key2="value2")
-        q2 = AtlasQ(key3="value3", key4__search="value4")
+        q1 = AtlasQ(key="value", key2="value2")
+        q2 = AtlasQ(key3="value3", key4="value4")
         q5 = q1 & q2
         filters, *aggregations = q5.accept(
             AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
         )
         filters = filters["$search"]
         filters.pop("index")
-        self.assertEqual(
-            [
-                {"$match": {"key2": {"$eq": "value2"}}},
-                {"$match": {"key3": {"$eq": "value3"}}},
-            ],
-            aggregations,
-        )
+        self.assertEqual([], aggregations)
         self.assertEqual(
             {
                 "compound": {
                     "filter": [
                         {"text": {"path": "key", "query": "value"}},
+                        {"text": {"path": "key2", "query": "value2"}},
+                        {"text": {"path": "key3", "query": "value3"}},
                         {"text": {"path": "key4", "query": "value4"}},
                     ],
                 }
@@ -128,8 +124,8 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         )
 
     def test_atlas_q_or(self):
-        q1 = AtlasQ(key__search="value", key2__search="value2")
-        q2 = AtlasQ(key3__search="value3", key4__search="value4")
+        q1 = AtlasQ(key="value", key2="value2")
+        q2 = AtlasQ(key3="value3", key4="value4")
         q5 = q1 | q2
         filters, *aggregations = q5.accept(
             AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))

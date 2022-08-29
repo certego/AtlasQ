@@ -27,7 +27,7 @@ class TestAtlasQ(TestBaseCase):
 
             atlas = AtlasManager("test")
 
-        q = AtlasQ(name__search="test")
+        q = AtlasQ(name="test")
         res = q.to_query(MyDocument)
         self.assertIsInstance(res, list)
         self.assertEqual(1, len(res))

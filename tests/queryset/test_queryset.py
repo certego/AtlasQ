@@ -78,7 +78,7 @@ class TestQuerySet(TestBaseCase):
         self.assertEqual(qs._get_projections(), [{"$project": {"name": 0}}])
 
     def test_filter(self):
-        qs = self.base.filter(name__search="test.com")
+        qs = self.base.filter(name="test.com")
         self.assertEqual(
             qs._aggrs,
             [

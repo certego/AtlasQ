@@ -62,7 +62,8 @@ class AtlasQuerySet(QuerySet):
                 if self._count:
                     self._aggrs_query[0]["$search"]["count"] = {"type": "total"}
             self._aggrs_query += self._get_projections()
-            logger.info(self._aggrs_query)
+            if not self.save_execution_time:
+                logger.info(self._aggrs_query)
         return self._aggrs_query
 
     @property
@@ -76,7 +77,7 @@ class AtlasQuerySet(QuerySet):
             if self.save_execution_time:
                 execution_time = datetime.now() - nnow
                 logger.info(
-                    f"Execution time is {execution_time.total_seconds()} seconds"
+                    f"Execution time is {execution_time.total_seconds()} seconds for query {self._aggrs_query}"
                 )
         if not self._return_objects:
             self._cursor_obj = self._search_result

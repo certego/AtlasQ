@@ -67,9 +67,9 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
             except KeyError:
                 # in case we return just aggregations, the filters should be empty
                 child_aggregations = [filters] + child_aggregations
-                filters = {}
-            filters.pop("index")
-            children_results.append(filters)
+            else:
+                filters.pop("index")
+                children_results.append(filters)
             aggregations.extend(child_aggregations)
         return {
             "compound": {"should": children_results, "minimumShouldMatch": 1}

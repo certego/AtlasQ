@@ -74,7 +74,7 @@ class AtlasQuerySet(QuerySet):
                 nnow = datetime.now()
             self._search_result = super().aggregate(self._aggrs)
             if self.save_execution_time:
-                execution_time = datetime.now() - nnow()
+                execution_time = datetime.now() - nnow
                 logger.info(
                     f"Execution time is {execution_time.total_seconds()} seconds"
                 )

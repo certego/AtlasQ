@@ -85,8 +85,6 @@ class AtlasQuerySet(QuerySet):
         if not self._return_objects:
             self._cursor_obj = self._search_result
         cursor = super()._cursor
-        if self.save_execution_time:
-            cursor.execution_time = execution_time
         return cursor
 
     def order_by(self, *keys):

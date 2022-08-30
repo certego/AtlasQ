@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from mongoengine import Q, QuerySet
 from pymongo.command_cursor import CommandCursor
@@ -21,6 +21,7 @@ class AtlasQuerySet(QuerySet):
             "_count",
             "_return_objects",
             "save_execution_time",
+            "_other_aggregations",
         )
         qs = super()._clone_into(new_qs)
         for prop in copy_props:
@@ -38,6 +39,7 @@ class AtlasQuerySet(QuerySet):
         self._count: bool = False
         self._return_objects: bool = True
         self.save_execution_time: bool = False
+        self._other_aggregations: List[Dict] = []
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access
@@ -62,6 +64,7 @@ class AtlasQuerySet(QuerySet):
                 if self._count:
                     self._aggrs_query[0]["$search"]["count"] = {"type": "total"}
             self._aggrs_query += self._get_projections()
+            self._aggrs_query += self._other_aggregations
             if not self.save_execution_time:
                 logger.info(self._aggrs_query)
         return self._aggrs_query
@@ -85,6 +88,13 @@ class AtlasQuerySet(QuerySet):
         if self.save_execution_time:
             cursor.execution_time = execution_time
         return cursor
+
+    def order_by(self, *keys):
+        other = self.clone()
+        order_by: List[Tuple[str, int]] = other._get_order_by(keys)
+        aggregation = {"$sort": {key: value for key, value in order_by}}
+        other._other_aggregations.append(aggregation)
+        return other
 
     @property
     def _query(self):

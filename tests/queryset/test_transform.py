@@ -32,6 +32,16 @@ class TestTransformSteps(TestBaseCase):
         with self.assertRaises(AtlasIndexFieldError):
             AtlasTransform(q.query).transform(index)
 
+    def test__regex(self):
+        q = AtlasQ(f__regex=".*")
+        t = AtlasTransform(q.query)
+        res = t._regex("f", ".*")
+        self.assertIn("regex", res)
+        self.assertIn("query", res["regex"])
+        self.assertIn(".*", res["regex"]["query"])
+        self.assertIn("path", res["regex"])
+        self.assertIn("f", res["regex"]["path"])
+
     def test__queryset_value(self):
         class MyDoc(Document):
             field = fields.StringField()
@@ -371,7 +381,7 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_field_start_with_keyword(self):
-        q1 = AtlasQ(key__internal__in=["value"])
+        q1 = AtlasQ(key__in=["value"])
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
@@ -379,41 +389,65 @@ class TestAtlasQ(TestBaseCase):
         self.assertEqual([], negative)
         self.assertEqual(
             [
-                {"text": {"path": "key.internal", "query": ["value"]}},
+                {"text": {"path": "key", "query": ["value"]}},
             ],
             positive,
             json.dumps(positive, indent=4),
         )
 
     def test_atlas_q_ne_embedded_document(self):
-        q1 = AtlasQ(key__internal__key__ne="value")
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
+        q = AtlasQ(f__g__h__ne="test")
+        positive, negative, aggregations = AtlasTransform(q.query).transform(
             AtlasIndex("test")
         )
-        self.assertEqual([], aggregations)
-        self.assertEqual([], positive)
         self.assertEqual(
-            [
-                {"text": {"path": "key.internal.key", "query": "value"}},
-            ],
             negative,
+            [
+                {
+                    "embeddedDocument": {
+                        "path": "f",
+                        "operator": {
+                            "embeddedDocument": {
+                                "path": "f.g",
+                                "operator": {
+                                    "text": {"query": "test", "path": "f.g.h"}
+                                },
+                            }
+                        },
+                    }
+                }
+            ],
             json.dumps(negative, indent=4),
         )
+        self.assertEqual(positive, [])
+        self.assertEqual(aggregations, [])
 
     def test_atlas_q_embedded_document(self):
-        q1 = AtlasQ(key__internal__key="value")
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
+        q = AtlasQ(f__g__h="test")
+        positive, negative, aggregations = AtlasTransform(q.query).transform(
             AtlasIndex("test")
         )
-        self.assertEqual([], aggregations)
-        self.assertEqual([], negative)
         self.assertEqual(
-            [
-                {"text": {"path": "key.internal.key", "query": "value"}},
-            ],
             positive,
+            [
+                {
+                    "embeddedDocument": {
+                        "path": "f",
+                        "operator": {
+                            "embeddedDocument": {
+                                "path": "f.g",
+                                "operator": {
+                                    "text": {"query": "test", "path": "f.g.h"}
+                                },
+                            }
+                        },
+                    }
+                }
+            ],
             json.dumps(positive, indent=4),
         )
+        self.assertEqual(negative, [])
+        self.assertEqual(aggregations, [])
 
     def test_atlas_q_nin(self):
         q1 = AtlasQ(key__nin=["value", "value2"])

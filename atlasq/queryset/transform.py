@@ -47,6 +47,7 @@ class AtlasTransform:
         "iwholeword",
         "wholeword",
     ]
+    regex_keywords = ["regex", "iregex"]
     size_keywords = ["size"]
     not_converted = [
         "all",
@@ -55,13 +56,32 @@ class AtlasTransform:
         "contains",
         "icontains",
         "mod",
-        "regex",
-        "iregex",
         "match",
     ]
 
     def __init__(self, atlas_query):
         self.atlas_query = atlas_query
+
+    def _regex(self, path: str, value: str):
+        return {"regex": {"query": value, "path": path}}
+
+    def _embedded_document(self, path: List[str], operator: Dict):
+        # recursive
+        if len(path) > 2:
+            new_path = path[1:]
+            new_path[0] = f"{path[0]}.{new_path[0]}"
+
+            return {
+                "embeddedDocument": {
+                    "path": path[0],
+                    "operator": self._embedded_document(new_path, operator),
+                }
+            }
+        # real exit case
+        if len(path) > 1:
+            return {"embeddedDocument": {"path": path[0], "operator": operator}}
+        # we do nothing in case it was not an embedded document
+        return operator
 
     def _exists(self, path: str, empty: bool) -> Dict:
         # false True == true == eq
@@ -185,21 +205,30 @@ class AtlasTransform:
                 if keyword in self.text_keywords:
                     obj = self._text(path, value)
                     break
+                if keyword in self.regex_keywords:
+                    obj = self._regex(path, value)
+                    break
             else:
                 if not path:
                     path = ".".join(key_parts)
                     self._ensure_keyword_is_indexed(atlas_index, path)
                 if isinstance(value, bool):
                     obj = self._equals(path, value)
-
                 else:
                     obj = self._text(path, value)
 
             if obj:
+                # we are wrapping the result to an embedded document
+                obj = self._embedded_document(path.split("."), obj)
                 logger.debug(obj)
+
                 if to_go == 1:
                     affirmative.append(obj)
                 else:
                     negative.append(obj)
-
+        if other_aggregations:
+            logger.warning(
+                "CARE! You are generating a query that uses other aggregations other than text search!"
+                f" Aggregations generated are {other_aggregations}"
+            )
         return affirmative, negative, other_aggregations

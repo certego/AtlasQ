@@ -58,27 +58,13 @@ class TestTransformSteps(TestBaseCase):
         self.assertEqual(negative, [])
         self.assertEqual(aggregations, [])
 
-    def test__exists_empty(self):
+    def test__exists(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query)
-        res = t._exists("field", True)
-        self.assertIn("$match", res)
-        self.assertIn("field", res["$match"])
-        self.assertIn("$exists", res["$match"]["field"])
-        self.assertIn("$eq", res["$match"]["field"])
-        self.assertEqual(res["$match"]["field"]["$exists"], True)
-        self.assertCountEqual(res["$match"]["field"]["$eq"], [None, [], ""])
-
-    def test__exists_not_empty(self):
-        q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
-        res = t._exists("field", False)
-        self.assertIn("$match", res)
-        self.assertIn("field", res["$match"])
-        self.assertIn("$exists", res["$match"]["field"])
-        self.assertIn("$ne", res["$match"]["field"])
-        self.assertEqual(res["$match"]["field"]["$exists"], True)
-        self.assertCountEqual(res["$match"]["field"]["$ne"], [None, [], ""])
+        res = t._exists("field")
+        self.assertIn("exists", res)
+        self.assertIn("path", res["exists"])
+        self.assertEqual(res["exists"]["path"], "field")
 
     def test__range_date_valid(self):
         q = AtlasQ(f=3)
@@ -244,11 +230,10 @@ class TestAtlasQ(TestBaseCase):
             AtlasIndex("test")
         )
         self.assertEqual(positive, [])
-        self.assertEqual(negative, [])
+        self.assertEqual(negative, [{"exists": {"path": "key"}}])
         self.assertEqual(
-            {"$match": {"key": {"$exists": True, "$eq": [None, [], ""]}}},
-            aggregations[0],
-            json.dumps(aggregations, indent=4),
+            [],
+            aggregations,
         )
 
     def test_atlas_q_not_exists_2(self):
@@ -256,11 +241,11 @@ class TestAtlasQ(TestBaseCase):
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
-        self.assertEqual(positive, [])
+        self.assertEqual(positive, [{"exists": {"path": "key"}}])
         self.assertEqual(negative, [])
         self.assertEqual(
-            {"$match": {"key": {"$exists": True, "$ne": [None, [], ""]}}},
-            aggregations[0],
+            [],
+            aggregations,
             json.dumps(aggregations, indent=4),
         )
 
@@ -269,9 +254,11 @@ class TestAtlasQ(TestBaseCase):
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
+        self.assertEqual(positive, [])
+        self.assertEqual(negative, [{"exists": {"path": "key"}}])
         self.assertEqual(
-            {"$match": {"key": {"$exists": True, "$eq": [None, [], ""]}}},
-            aggregations[0],
+            [],
+            aggregations,
             json.dumps(aggregations, indent=4),
         )
 
@@ -280,11 +267,11 @@ class TestAtlasQ(TestBaseCase):
         positive, negative, aggregations = AtlasTransform(q1.query).transform(
             AtlasIndex("test")
         )
-        self.assertEqual(positive, [])
+        self.assertEqual(positive, [{"exists": {"path": "key"}}])
         self.assertEqual(negative, [])
         self.assertEqual(
-            {"$match": {"key": {"$exists": True, "$ne": [None, [], ""]}}},
-            aggregations[0],
+            [],
+            aggregations,
             json.dumps(aggregations, indent=4),
         )
 

@@ -83,19 +83,8 @@ class AtlasTransform:
         # we do nothing in case it was not an embedded document
         return operator
 
-    def _exists(self, path: str, empty: bool) -> Dict:
-        # false True == true == eq
-        # true False == true == eq
-        # false false == false == ne
-        # true true == false == ne
-        return {
-            "$match": {
-                path: {
-                    "$exists": True,
-                    "$eq" if empty else "$ne": [None, [], ""],
-                }
-            }
-        }
+    def _exists(self, path: str) -> Dict:
+        return {"exists": {"path": path}}
 
     def _range(
         self, path: str, value: Union[int, datetime.datetime], keyword: str
@@ -136,8 +125,14 @@ class AtlasTransform:
             raise NotImplementedError(f"Size search for {path} must be 0")
         if operator not in ["eq", "ne"]:
             raise NotImplementedError(f"Size search for {path} must be eq or ne")
-        empty = operator == "eq"
-        return self._exists(path, empty)
+        return {
+            "$match": {
+                path: {
+                    "$exists": True,
+                    f"${operator}": [None, [], ""],
+                }
+            }
+        }
 
     def _ensure_keyword_is_indexed(self, atlas_index: AtlasIndex, keyword: str) -> None:
         if atlas_index.ensured:
@@ -180,12 +175,6 @@ class AtlasTransform:
                 if keyword in self.negative_keywords:
                     to_go *= -1
 
-                if keyword in self.exists_keywords:
-
-                    empty = (to_go == 1) ^ value
-
-                    other_aggregations.append(self._exists(path, empty))
-                    break
                 if keyword in self.size_keywords:
                     # it must the last keyword, otherwise we do not support it
                     if i != len(key_parts) - 1:
@@ -196,6 +185,12 @@ class AtlasTransform:
                         self._size(path, value, "eq" if to_go == 1 else "ne")
                     )
                     break
+                if keyword in self.exists_keywords:
+                    if value is False:
+                        to_go *= -1
+                    obj = self._exists(path)
+                    break
+
                 if keyword in self.range_keywords:
                     obj = self._range(path, value, keyword)
                     break

@@ -80,7 +80,7 @@ class AtlasQuerySet(QuerySet):
             if self.save_execution_time:
                 execution_time = datetime.now() - nnow
                 logger.info(
-                    f"Execution time is {execution_time.total_seconds()} seconds for query {self._aggrs_query}"
+                    f"{self._aggrs_query} | {round(execution_time.total_seconds(), 3)}"
                 )
         if not self._return_objects:
             self._cursor_obj = self._search_result

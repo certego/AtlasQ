@@ -135,11 +135,8 @@ class AtlasTransform:
         }
 
     def _ensure_keyword_is_indexed(self, atlas_index: AtlasIndex, keyword: str) -> None:
-        if atlas_index.ensured:
-            if not atlas_index.ensure_keyword_is_indexed(keyword):
-                logger.error(
-                    f"The keyword {keyword} is not indexed in {atlas_index.index}"
-                )
+        if not atlas_index.ensure_keyword_is_indexed(keyword):
+            logger.error(f"The keyword {keyword} is not indexed in {atlas_index.index}")
 
     def transform(
         self, atlas_index: AtlasIndex
@@ -211,9 +208,11 @@ class AtlasTransform:
                     obj = self._text(path, value)
 
             if obj:
-                self._ensure_keyword_is_indexed(atlas_index, path)
-                # we are wrapping the result to an embedded document
-                obj = self._embedded_document(path.split("."), obj)
+                if atlas_index.ensured:
+                    self._ensure_keyword_is_indexed(atlas_index, path)
+                if atlas_index.use_embedded_documents:
+                    # we are wrapping the result to an embedded document
+                    obj = self._embedded_document(path.split("."), obj)
                 logger.debug(obj)
 
                 if to_go == 1:

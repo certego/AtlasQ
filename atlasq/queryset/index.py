@@ -17,15 +17,19 @@ LIST_TEXT_INDEXES_ENDPOINT = (
 
 
 class AtlasIndex:
-    def __init__(self, index_name: str):
+
+    fields_to_copy = ["ensured", "_indexed_fields", "use_embedded_documents"]
+
+    def __init__(self, index_name: str, use_embedded_documents: bool = True):
         self._indexed_fields: List[str] = []
         self.ensured: bool = False
+        self.use_embedded_documents: bool = use_embedded_documents
         self._index: str = index_name
 
     def __copy__(self):
         res = AtlasIndex(self._index)
-        res.ensured = self.ensured
-        res._indexed_fields = self._indexed_fields
+        for field in self.fields_to_copy:
+            setattr(res, field, getattr(self, field))
         return res
 
     @property

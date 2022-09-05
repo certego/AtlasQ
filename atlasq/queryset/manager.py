@@ -19,10 +19,17 @@ class AtlasManager(QuerySetManager):
         return res
 
     def __init__(
-        self, atlas_index: Union[str, None], save_execution_time: bool = False
+        self,
+        atlas_index: Union[str, None],
+        save_execution_time: bool = False,
+        use_embedded_documents_indexes: bool = True,
     ):
         super().__init__()
-        self._index = AtlasIndex(atlas_index) if atlas_index else None
+        self._index = (
+            AtlasIndex(atlas_index, use_embedded_documents_indexes)
+            if atlas_index
+            else None
+        )
         self._save_execution_time = save_execution_time
 
     def __get__(self, instance, owner):

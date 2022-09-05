@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 from mongoengine import QuerySet
 
-from atlasq.queryset.exceptions import AtlasFieldError
+from atlasq.queryset.exceptions import AtlasFieldError, AtlasIndexFieldError
 from atlasq.queryset.index import AtlasIndex
 
 logger = logging.getLogger(__name__)
@@ -136,7 +136,9 @@ class AtlasTransform:
 
     def _ensure_keyword_is_indexed(self, atlas_index: AtlasIndex, keyword: str) -> None:
         if not atlas_index.ensure_keyword_is_indexed(keyword):
-            logger.error(f"The keyword {keyword} is not indexed in {atlas_index.index}")
+            raise AtlasIndexFieldError(
+                f"The keyword {keyword} is not indexed in {atlas_index.index}"
+            )
 
     def transform(
         self, atlas_index: AtlasIndex

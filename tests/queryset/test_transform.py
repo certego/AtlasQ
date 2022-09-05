@@ -15,7 +15,7 @@ class TestTransformSteps(TestBaseCase):
     def test__ensure_keyword(self):
 
         index = AtlasIndex("test")
-        index.__indexed_fields = ["field"]
+        index._indexed_fields = ["field"]
         q = AtlasQ(field="aaa")
         try:
             AtlasTransform(q.query).transform(index)
@@ -31,6 +31,22 @@ class TestTransformSteps(TestBaseCase):
 
         with self.assertRaises(AtlasIndexFieldError):
             AtlasTransform(q.query).transform(index)
+
+        q = AtlasQ(field__field2="bbb")
+        try:
+            AtlasTransform(q.query).transform(index)
+        except AtlasIndexFieldError as e:
+            self.fail(e)
+
+        index.use_embedded_documents = False
+        with self.assertRaises(AtlasIndexFieldError):
+            AtlasTransform(q.query).transform(index)
+
+        index._indexed_fields.append("field.field2")
+        try:
+            AtlasTransform(q.query).transform(index)
+        except AtlasIndexFieldError as e:
+            self.fail(e)
 
     def test__regex(self):
         q = AtlasQ(f__regex=".*")

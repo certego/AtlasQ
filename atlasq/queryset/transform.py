@@ -208,11 +208,15 @@ class AtlasTransform:
                     obj = self._text(path, value)
 
             if obj:
-                if atlas_index.ensured:
-                    self._ensure_keyword_is_indexed(atlas_index, path)
                 if atlas_index.use_embedded_documents:
                     # we are wrapping the result to an embedded document
                     obj = self._embedded_document(path.split("."), obj)
+
+                if atlas_index.ensured:
+                    # if we are using the embedded object, in the index is defined only the first level
+                    if atlas_index.use_embedded_documents:
+                        path = path.split(".")[0]
+                    self._ensure_keyword_is_indexed(atlas_index, path)
                 logger.debug(obj)
 
                 if to_go == 1:

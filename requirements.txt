@@ -1,2 +1,2 @@
-mongoengine>=0.24.0
+mongoengine>=0.22.0
 requests>=2.18.0

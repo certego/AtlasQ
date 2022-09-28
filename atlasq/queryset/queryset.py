@@ -94,13 +94,26 @@ class AtlasQuerySet(QuerySet):
         other._other_aggregations.append(aggregation)
         return other
 
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            from mongoengine.queryset.base import BaseQuerySet
+
+            qs = self.clone()
+            qs._limit = 1
+            return BaseQuerySet.__getitem__(qs, key)
+        return super().__getitem__(key)
+
     @property
     def _query(self):
         if not self._search_result:
             return None
+        start = self._skip
+        end = self._limit
         # unfortunately here we have to actually run the query to get the objects
-        # i do not see other way to do this atm
-        self._query_obj = Q(id__in=[obj["_id"] for obj in self._search_result if obj])
+        # I do not see other way to do this atm
+        self._query_obj = Q(
+            id__in=[obj["_id"] for obj in self._search_result[start:end] if obj]
+        )
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 

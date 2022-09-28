@@ -117,9 +117,15 @@ class AtlasQuerySet(QuerySet):
         end = self._limit
         # unfortunately here we have to actually run the query to get the objects
         # I do not see other way to do this atm
-        self._query_obj = Q(
-            id__in=[obj["_id"] for obj in self._search_result[start:end] if obj]
-        )
+        ids: List[str] = []
+        for i, obj in enumerate(self._search_result):
+            if i >= end:
+                break
+            if i < start:
+                continue
+            if obj:
+                ids.append(obj["_id"])
+        self._query_obj = Q(id__in=ids)
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 

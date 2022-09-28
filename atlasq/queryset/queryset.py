@@ -88,19 +88,44 @@ class AtlasQuerySet(QuerySet):
         return cursor
 
     def order_by(self, *keys):
-        other = self.clone()
-        order_by: List[Tuple[str, int]] = other._get_order_by(keys)
-        aggregation = {"$sort": {key: value for key, value in order_by}}
-        other._other_aggregations.append(aggregation)
-        return other
+        if not keys:
+            return self
+        qs: AtlasQuerySet = self.clone()
+        order_by: List[
+            Tuple[str, int]
+        ] = qs._get_order_by(  # pylint: disable=protected-access
+            keys
+        )
+        aggregation = {"$sort": dict(order_by)}
+        qs._other_aggregations.append(aggregation)  # pylint: disable=protected-access
+        return qs
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            from mongoengine.queryset.base import BaseQuerySet
+
+            qs = self.clone()
+            qs._limit = 1
+            return BaseQuerySet.__getitem__(qs, key)
+        return super().__getitem__(key)
 
     @property
     def _query(self):
         if not self._search_result:
             return None
+        start = self._skip
+        end = self._limit
         # unfortunately here we have to actually run the query to get the objects
-        # i do not see other way to do this atm
-        self._query_obj = Q(id__in=[obj["_id"] for obj in self._search_result if obj])
+        # I do not see other way to do this atm
+        ids: List[str] = []
+        for i, obj in enumerate(self._search_result):
+            if end is not None and i >= end:
+                break
+            if start is not None and i < start:
+                continue
+            if obj:
+                ids.append(obj["_id"])
+        self._query_obj = Q(id__in=ids)
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 

@@ -217,7 +217,7 @@ class AtlasTransform:
                 if atlas_index.ensured:
                     # if we are using the embedded object, in the index is defined only the first level
                     if atlas_index.use_embedded_documents:
-                        path = path.split(".")[0]
+                        path = path.split(".", maxsplit=1)[0]
                     self._ensure_keyword_is_indexed(atlas_index, path)
                 logger.debug(obj)
 

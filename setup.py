@@ -1,9 +1,3 @@
-"""
-# PyDragonfly
-Robust Python SDK and CLI for interacting with Certego's Dragonfly service's API.
-## Docs & Example Usage: https://github.com/certego/pydragonfly
-"""
-
 from pathlib import Path
 
 from setuptools import find_packages, setup

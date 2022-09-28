@@ -88,6 +88,8 @@ class AtlasQuerySet(QuerySet):
         return cursor
 
     def order_by(self, *keys):
+        if not keys:
+            return self
         other = self.clone()
         order_by: List[Tuple[str, int]] = other._get_order_by(keys)
         aggregation = {"$sort": {key: value for key, value in order_by}}

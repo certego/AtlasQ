@@ -119,9 +119,9 @@ class AtlasQuerySet(QuerySet):
         # I do not see other way to do this atm
         ids: List[str] = []
         for i, obj in enumerate(self._search_result):
-            if i >= end:
+            if end is not None and i >= end:
                 break
-            if i < start:
+            if start is not None and i < start:
                 continue
             if obj:
                 ids.append(obj["_id"])

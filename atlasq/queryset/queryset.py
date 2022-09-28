@@ -173,3 +173,9 @@ class AtlasQuerySet(QuerySet):
                 self._len = count["count"]
         logger.debug(self._len)
         return self._len
+
+    def limit(self, n):
+        qs = self.clone()
+        qs._limit = n
+        qs._other_aggregations.append({"$limit": n})
+        return qs

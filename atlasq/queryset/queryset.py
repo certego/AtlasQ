@@ -90,11 +90,15 @@ class AtlasQuerySet(QuerySet):
     def order_by(self, *keys):
         if not keys:
             return self
-        other = self.clone()
-        order_by: List[Tuple[str, int]] = other._get_order_by(keys)
-        aggregation = {"$sort": {key: value for key, value in order_by}}
-        other._other_aggregations.append(aggregation)
-        return other
+        qs: AtlasQuerySet = self.clone()
+        order_by: List[
+            Tuple[str, int]
+        ] = qs._get_order_by(  # pylint: disable=protected-access
+            keys
+        )
+        aggregation = {"$sort": dict(order_by)}
+        qs._other_aggregations.append(aggregation)  # pylint: disable=protected-access
+        return qs
 
     def __getitem__(self, key):
         if isinstance(key, int):

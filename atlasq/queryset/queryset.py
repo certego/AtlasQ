@@ -129,11 +129,19 @@ class AtlasQuerySet(QuerySet):
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 
-    def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
+    def aggregate(self, pipeline, **kwargs):
         self._return_objects = False
         if isinstance(pipeline, dict):
             pipeline = [pipeline]
-        return super().aggregate(self._aggrs + pipeline, *suppl_pipeline)
+
+        final_pipeline = self._aggrs + pipeline
+        collection = self._collection
+        if self._read_preference is not None or self._read_concern is not None:
+            collection = self._collection.with_options(
+                read_preference=self._read_preference, read_concern=self._read_concern
+            )
+
+        return collection.aggregate(final_pipeline, cursor={}, **kwargs)
 
     def __call__(self, q_obj=None, **query):
         if self.index is None:

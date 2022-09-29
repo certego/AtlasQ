@@ -129,7 +129,7 @@ class AtlasQuerySet(QuerySet):
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 
-    def aggregate(self, pipeline, **kwargs):
+    def aggregate(self, pipeline, **kwargs):  # pylint: disable=arguments-differ
         self._return_objects = False
         if isinstance(pipeline, dict):
             pipeline = [pipeline]

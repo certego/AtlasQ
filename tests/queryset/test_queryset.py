@@ -184,3 +184,6 @@ class TestQuerySet(TestBaseCase):
         self.base.index.ensured = True
         with self.assertRaises(AtlasIndexFieldError):
             self.base.get(another_field="test.com")
+
+    def test_first2(self):
+        self.base.filter(name="wat").first()

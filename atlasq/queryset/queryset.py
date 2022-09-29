@@ -176,6 +176,6 @@ class AtlasQuerySet(QuerySet):
 
     def limit(self, n):
         qs = self.clone()
-        qs._limit = n
-        qs._other_aggregations.append({"$limit": n})
+        qs._limit = n  # pylint: disable=protected-access
+        qs._other_aggregations.append({"$limit": n})  # pylint: disable=protected-access
         return qs

@@ -76,7 +76,7 @@ class AtlasQuerySet(QuerySet):
                 from datetime import datetime
 
                 nnow = datetime.now()
-            self._search_result = super().aggregate(self._aggrs)
+            self._search_result = self.__collection_aggregate(self._aggrs)
             if self.save_execution_time:
                 execution_time = datetime.now() - nnow
                 logger.info(
@@ -129,19 +129,22 @@ class AtlasQuerySet(QuerySet):
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 
+    def __collection_aggregate(self, final_pipeline, **kwargs):
+        collection = self._collection
+        if self._read_preference is not None or self._read_concern is not None:
+            collection = self._collection.with_options(
+                read_preference=self._read_preference, read_concern=self._read_concern
+            )
+        logger.debug(final_pipeline)
+        return collection.aggregate(final_pipeline, cursor={}, **kwargs)
+
     def aggregate(self, pipeline, **kwargs):  # pylint: disable=arguments-differ
         self._return_objects = False
         if isinstance(pipeline, dict):
             pipeline = [pipeline]
 
         final_pipeline = self._aggrs + pipeline
-        collection = self._collection
-        if self._read_preference is not None or self._read_concern is not None:
-            collection = self._collection.with_options(
-                read_preference=self._read_preference, read_concern=self._read_concern
-            )
-
-        return collection.aggregate(final_pipeline, cursor={}, **kwargs)
+        return self.__parent_aggregate(final_pipeline)
 
     def __call__(self, q_obj=None, **query):
         if self.index is None:
@@ -166,9 +169,10 @@ class AtlasQuerySet(QuerySet):
         return []
 
     def count(self, with_limit_and_skip=False):
-        # todo manage limit and skip
         self._count = True  # pylint: disable=protected-access
-        cursor = super().aggregate(self._aggrs)  # pylint: disable=protected-access
+        cursor = self.__collection_aggregate(
+            self._aggrs
+        )  # pylint: disable=protected-access
         try:
             count = next(cursor)
         except StopIteration:

@@ -144,7 +144,7 @@ class AtlasQuerySet(QuerySet):
             pipeline = [pipeline]
 
         final_pipeline = self._aggrs + pipeline
-        return self.__parent_aggregate(final_pipeline)
+        return self.__collection_aggregate(final_pipeline)
 
     def __call__(self, q_obj=None, **query):
         if self.index is None:

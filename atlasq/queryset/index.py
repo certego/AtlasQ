@@ -73,7 +73,8 @@ class AtlasIndex:
 
     def _set_indexed_fields(self, index_result: Dict, base_field: str = ""):
         if index_result["type"] == "document":
-            self._indexed_fields.append(base_field)
+            if base_field:
+                self._indexed_fields.append(base_field)
             if index_result.get("dynamic", False):
                 self._indexed_fields.append(f"{base_field}.*" if base_field else "*")
             else:

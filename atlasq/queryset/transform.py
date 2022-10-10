@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple, Union
 from mongoengine import QuerySet
 
 from atlasq.queryset.exceptions import AtlasFieldError, AtlasIndexFieldError
-from atlasq.queryset.index import AtlasIndex
+from atlasq.queryset.index import AtlasIndex, AtlasIndexType
 
 logger = logging.getLogger(__name__)
 
@@ -59,29 +59,42 @@ class AtlasTransform:
         "match",
     ]
 
-    def __init__(self, atlas_query):
+    def __init__(self, atlas_query, atlas_index: AtlasIndex):
         self.atlas_query = atlas_query
+        self.atlas_index = atlas_index
 
     def _regex(self, path: str, value: str):
         return {"regex": {"query": value, "path": path}}
 
-    def _embedded_document(self, path: List[str], operator: Dict):
-        # recursive
-        if len(path) > 2:
-            new_path = path[1:]
-            new_path[0] = f"{path[0]}.{new_path[0]}"
-
-            return {
-                "embeddedDocument": {
-                    "path": path[0],
-                    "operator": self._embedded_document(new_path, operator),
-                }
+    def _embedded_document(self, path: str, content: Dict):
+        return {
+            "embeddedDocument": {
+                "path": path,
+                "operator": content,
             }
-        # real exit case
-        if len(path) > 1:
-            return {"embeddedDocument": {"path": path[0], "operator": operator}}
-        # we do nothing in case it was not an embedded document
-        return operator
+        }
+
+    def _convert_to_embedded_document(
+        self, path: List[str], operator: Dict, start: str = ""
+    ):
+        element = path.pop(0)
+        partial_path = f"{start}.{element}" if start else element
+        if not self.atlas_index.ensured and self.atlas_index.use_embedded_documents:
+            return operator
+        if (
+            self.atlas_index.ensured
+            and self.atlas_index.get_type_from_keyword(partial_path)
+            != AtlasIndexType.EMBEDDED_DOCUMENT.value
+        ):
+            return operator
+
+        if not path:
+            return operator
+        else:
+            return self._embedded_document(
+                partial_path,
+                self._convert_to_embedded_document(path, operator, start=partial_path),
+            )
 
     def _exists(self, path: str) -> Dict:
         return {"exists": {"path": path}}
@@ -134,15 +147,18 @@ class AtlasTransform:
             }
         }
 
-    def _ensure_keyword_is_indexed(self, atlas_index: AtlasIndex, keyword: str) -> None:
-        if not atlas_index.ensure_keyword_is_indexed(keyword):
-            raise AtlasIndexFieldError(
-                f"The keyword {keyword} is not indexed in {atlas_index.index}"
-            )
+    def _ensure_path_is_indexed(self, path: List[str]) -> None:
+        start = ""
+        for element in path:
+            partial_path = f"{start}.{element}" if start else element
 
-    def transform(
-        self, atlas_index: AtlasIndex
-    ) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+            if not self.atlas_index.ensure_keyword_is_indexed(partial_path):
+                raise AtlasIndexFieldError(
+                    f"The keyword {partial_path} is not indexed in {self.atlas_index.index}"
+                )
+            start = partial_path
+
+    def transform(self) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         other_aggregations = []
         affirmative = []
         negative = []
@@ -210,15 +226,12 @@ class AtlasTransform:
                     obj = self._text(path, value)
 
             if obj:
-                if atlas_index.use_embedded_documents:
-                    # we are wrapping the result to an embedded document
-                    obj = self._embedded_document(path.split("."), obj)
+                # we are wrapping the result to an embedded document
+                obj = self._convert_to_embedded_document(path.split("."), obj)
 
-                if atlas_index.ensured:
-                    # if we are using the embedded object, in the index is defined only the first level
-                    if atlas_index.use_embedded_documents:
-                        path = path.split(".", maxsplit=1)[0]
-                    self._ensure_keyword_is_indexed(atlas_index, path)
+                if self.atlas_index.ensured:
+
+                    self._ensure_path_is_indexed(path.split("."))
                 logger.debug(obj)
 
                 if to_go == 1:

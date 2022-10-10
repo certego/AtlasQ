@@ -1,11 +1,12 @@
 import fnmatch
+from enum import Enum
 from logging import getLogger
 from typing import Dict, List
 
 import requests
 from requests.auth import HTTPDigestAuth
 
-from atlasq.queryset.exceptions import AtlasIndexError
+from atlasq.queryset.exceptions import AtlasIndexError, AtlasIndexFieldError
 
 logger = getLogger(__name__)
 
@@ -16,12 +17,25 @@ LIST_TEXT_INDEXES_ENDPOINT = (
 )
 
 
+class AtlasIndexType(Enum):
+    DOCUMENT = "document"
+    EMBEDDED_DOCUMENT = "embeddedDocuments"
+    STRING = "string"
+    INTEGER = "integer"
+    BOOLEAN = "boolean"
+    DATE = "date"
+
+    @classmethod
+    def values(cls) -> List[str]:
+        return [e.value for e in cls]
+
+
 class AtlasIndex:
 
     fields_to_copy = ["ensured", "_indexed_fields", "use_embedded_documents"]
 
     def __init__(self, index_name: str, use_embedded_documents: bool = True):
-        self._indexed_fields: List[str] = []
+        self._indexed_fields: Dict[str, str] = {}
         self.ensured: bool = False
         self.use_embedded_documents: bool = use_embedded_documents
         self._index: str = index_name
@@ -72,23 +86,25 @@ class AtlasIndex:
         return self.ensured
 
     def _set_indexed_fields(self, index_result: Dict, base_field: str = ""):
-        if index_result["type"] == "document":
-            if base_field:
-                self._indexed_fields.append(base_field)
-            if index_result.get("dynamic", False):
-                self._indexed_fields.append(f"{base_field}.*" if base_field else "*")
-            else:
+        lucene_type = index_result["type"]
+        if lucene_type in [
+            AtlasIndexType.DOCUMENT.value,
+            AtlasIndexType.EMBEDDED_DOCUMENT.value,
+        ]:
+            if not index_result.get("dynamic", False):
                 for field, value in index_result.get("fields", {}).items():
                     field = f"{base_field}.{field}" if base_field else field
                     self._set_indexed_fields(value, base_field=field)
-
-        else:
-            assert base_field
-            self._indexed_fields.append(base_field)
+            else:
+                self._indexed_fields[f"{base_field}.*" if base_field else "*"] = ""
+        if base_field:
+            if lucene_type not in AtlasIndexType.values():
+                logger.warning(f"Lucene type {lucene_type} not configured")
+            self._indexed_fields[base_field] = lucene_type
 
     def _set_indexed_from_mappings(self, index_result: Dict):
         mappings = index_result["mappings"]
-        mappings["type"] = "document"
+        mappings["type"] = AtlasIndexType.DOCUMENT.value
         self._set_indexed_fields(mappings)
         logger.debug(self._indexed_fields)
 
@@ -96,3 +112,11 @@ class AtlasIndex:
         if not self.ensured:
             raise AtlasIndexError("Index not ensured")
         return any(fnmatch.fnmatch(keyword, field) for field in self._indexed_fields)
+
+    def get_type_from_keyword(self, keyword) -> str:
+        if not self.ensured:
+            raise AtlasIndexError("Index not ensured")
+        if keyword in self._indexed_fields:
+            return self._indexed_fields[keyword]
+        else:
+            raise AtlasIndexFieldError(f"Keyword {keyword} not  present in index")

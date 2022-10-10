@@ -19,7 +19,7 @@ class MockResponse:
             raise HTTPError(self.status_code)
 
 
-class TestManager(TestBaseCase):
+class TestIndex(TestBaseCase):
     def test_ensure_keyword_is_indexed(self):
         index = AtlasIndex("myindex")
         index._indexed_fields = ["field1", "field2.*"]
@@ -60,11 +60,15 @@ class TestManager(TestBaseCase):
                 }
             }
         )
+        print(index._indexed_fields)
         self.assertCountEqual(
-            index._indexed_fields,
+            index._indexed_fields.keys(),
             [
+                "field1",
                 "field1.*",
+                "field2",
                 "field2.field",
+                "field2.field4",
                 "field2.field4.field5",
                 "field2.field4.field6",
             ],
@@ -89,7 +93,8 @@ class TestManager(TestBaseCase):
             }
         )
         self.assertCountEqual(
-            index._indexed_fields, ["field1", "field2.field3", "field2.field4"]
+            index._indexed_fields,
+            ["field1", "field2", "field2.field3", "field2.field4"],
         )
         index._indexed_fields.clear()
         index._set_indexed_fields(

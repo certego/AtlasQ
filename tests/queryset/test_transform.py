@@ -15,7 +15,7 @@ class TestTransformSteps(TestBaseCase):
     def test__embedded_document(self):
         index = AtlasIndex("test")
         index.ensured = True
-        index._indexed_fields = {"field": "embeddedDocument", "field.field2": "string"}
+        index._indexed_fields = {"field": "embeddedDocuments", "field.field2": "string"}
         q = AtlasQ(field__field2="aaa")
         try:
             result = AtlasTransform(q.query, index).transform()
@@ -60,7 +60,7 @@ class TestTransformSteps(TestBaseCase):
 
         index._indexed_fields = {
             "field": "document",
-            "field.field2": "embeddedDocument",
+            "field.field2": "embeddedDocuments",
             "field.field2.field3": "string",
         }
         q = AtlasQ(field__field2__field3="aaa")
@@ -74,8 +74,8 @@ class TestTransformSteps(TestBaseCase):
             )
 
         index._indexed_fields = {
-            "field": "embeddedDocument",
-            "field.field2": "embeddedDocument",
+            "field": "embeddedDocuments",
+            "field.field2": "embeddedDocuments",
             "field.field2.field3": "string",
         }
         q = AtlasQ(field__field2__field3="aaa")
@@ -105,7 +105,7 @@ class TestTransformSteps(TestBaseCase):
             )
 
         index._indexed_fields = {
-            "field": "embeddedDocument",
+            "field": "embeddedDocuments",
             "field.field2": "document",
             "field.field2.field3": "string",
         }
@@ -149,7 +149,6 @@ class TestTransformSteps(TestBaseCase):
 
         q = AtlasQ(field__field2="bbb")
 
-        index.use_embedded_documents = False
         with self.assertRaises(AtlasIndexFieldError):
             AtlasTransform(q.query, index).transform()
 
@@ -510,10 +509,15 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_ne_embedded_document(self):
+        index = AtlasIndex("test")
+        index._indexed_fields = {
+            "f": "embeddedDocuments",
+            "f.g": "embeddedDocuments",
+            "f.g.h": "string",
+        }
+        index.ensured = True
         q = AtlasQ(f__g__h__ne="test")
-        positive, negative, aggregations = AtlasTransform(
-            q.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q.query, index).transform()
         self.assertEqual(
             negative,
             [
@@ -538,9 +542,14 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_embedded_document(self):
         q = AtlasQ(f__g__h="test")
-        positive, negative, aggregations = AtlasTransform(
-            q.query, AtlasIndex("test")
-        ).transform()
+        index = AtlasIndex("test")
+        index._indexed_fields = {
+            "f": "embeddedDocuments",
+            "f.g": "embeddedDocuments",
+            "f.g.h": "string",
+        }
+        index.ensured = True
+        positive, negative, aggregations = AtlasTransform(q.query, index).transform()
         self.assertEqual(
             positive,
             [

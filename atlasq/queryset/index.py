@@ -32,12 +32,11 @@ class AtlasIndexType(Enum):
 
 class AtlasIndex:
 
-    fields_to_copy = ["ensured", "_indexed_fields", "use_embedded_documents"]
+    fields_to_copy = ["ensured", "_indexed_fields"]
 
-    def __init__(self, index_name: str, use_embedded_documents: bool = True):
+    def __init__(self, index_name: str):
         self._indexed_fields: Dict[str, str] = {}
         self.ensured: bool = False
-        self.use_embedded_documents: bool = use_embedded_documents
         self._index: str = index_name
 
     def __copy__(self):

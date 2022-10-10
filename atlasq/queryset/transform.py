@@ -79,11 +79,10 @@ class AtlasTransform:
     ):
         element = path.pop(0)
         partial_path = f"{start}.{element}" if start else element
-        if not self.atlas_index.ensured and self.atlas_index.use_embedded_documents:
+        if not self.atlas_index.ensured:
             return operator
         if (
-            self.atlas_index.ensured
-            and self.atlas_index.get_type_from_keyword(partial_path)
+            self.atlas_index.get_type_from_keyword(partial_path)
             != AtlasIndexType.EMBEDDED_DOCUMENT.value
         ):
             return operator

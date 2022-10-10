@@ -90,11 +90,10 @@ class AtlasTransform:
 
         if not path:
             return operator
-        else:
-            return self._embedded_document(
-                partial_path,
-                self._convert_to_embedded_document(path, operator, start=partial_path),
-            )
+        return self._embedded_document(
+            partial_path,
+            self._convert_to_embedded_document(path, operator, start=partial_path),
+        )
 
     def _exists(self, path: str) -> Dict:
         return {"exists": {"path": path}}

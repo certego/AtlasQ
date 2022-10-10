@@ -60,7 +60,6 @@ class TestIndex(TestBaseCase):
                 }
             }
         )
-        print(index._indexed_fields)
         self.assertCountEqual(
             index._indexed_fields.keys(),
             [

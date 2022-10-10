@@ -12,45 +12,155 @@ from tests.test_base import TestBaseCase
 
 
 class TestTransformSteps(TestBaseCase):
+    def test__embedded_document(self):
+        index = AtlasIndex("test")
+        index.ensured = True
+        index._indexed_fields = {"field": "embeddedDocuments", "field.field2": "string"}
+        q = AtlasQ(field__field2="aaa")
+        try:
+            result = AtlasTransform(q.query, index).transform()
+        except AtlasIndexFieldError as e:
+            self.fail(e)
+        else:
+            self.assertEqual(
+                result[0][0],
+                {
+                    "embeddedDocument": {
+                        "path": "field",
+                        "operator": {"text": {"query": "aaa", "path": "field.field2"}},
+                    }
+                },
+            )
+
+        index._indexed_fields = {"field": "document", "field.field2": "string"}
+        q = AtlasQ(field__field2="aaa")
+        try:
+            result = AtlasTransform(q.query, index).transform()
+        except AtlasIndexFieldError as e:
+            self.fail(e)
+        else:
+            self.assertEqual(
+                result[0][0], {"text": {"query": "aaa", "path": "field.field2"}}
+            )
+
+        index._indexed_fields = {
+            "field": "document",
+            "field.field2": "document",
+            "field.field2.field3": "string",
+        }
+        q = AtlasQ(field__field2__field3="aaa")
+        try:
+            result = AtlasTransform(q.query, index).transform()
+        except AtlasIndexFieldError as e:
+            self.fail(e)
+        else:
+            self.assertEqual(
+                result[0][0], {"text": {"query": "aaa", "path": "field.field2.field3"}}
+            )
+
+        index._indexed_fields = {
+            "field": "document",
+            "field.field2": "embeddedDocuments",
+            "field.field2.field3": "string",
+        }
+        q = AtlasQ(field__field2__field3="aaa")
+        try:
+            result = AtlasTransform(q.query, index).transform()
+        except AtlasIndexFieldError as e:
+            self.fail(e)
+        else:
+            self.assertEqual(
+                result[0][0], {"text": {"query": "aaa", "path": "field.field2.field3"}}
+            )
+
+        index._indexed_fields = {
+            "field": "embeddedDocuments",
+            "field.field2": "embeddedDocuments",
+            "field.field2.field3": "string",
+        }
+        q = AtlasQ(field__field2__field3="aaa")
+        try:
+            result = AtlasTransform(q.query, index).transform()
+        except AtlasIndexFieldError as e:
+            self.fail(e)
+        else:
+            self.assertEqual(
+                result[0][0],
+                {
+                    "embeddedDocument": {
+                        "path": "field",
+                        "operator": {
+                            "embeddedDocument": {
+                                "path": "field.field2",
+                                "operator": {
+                                    "text": {
+                                        "query": "aaa",
+                                        "path": "field.field2.field3",
+                                    }
+                                },
+                            }
+                        },
+                    }
+                },
+            )
+
+        index._indexed_fields = {
+            "field": "embeddedDocuments",
+            "field.field2": "document",
+            "field.field2.field3": "string",
+        }
+        q = AtlasQ(field__field2__field3="aaa")
+        try:
+            result = AtlasTransform(q.query, index).transform()
+        except AtlasIndexFieldError as e:
+            self.fail(e)
+        else:
+            self.assertEqual(
+                result[0][0],
+                {
+                    "embeddedDocument": {
+                        "path": "field",
+                        "operator": {
+                            "text": {"query": "aaa", "path": "field.field2.field3"}
+                        },
+                    }
+                },
+            )
+
     def test__ensure_keyword(self):
 
         index = AtlasIndex("test")
-        index._indexed_fields = ["field"]
+        index._indexed_fields = {"field": "string"}
         q = AtlasQ(field="aaa")
         try:
-            AtlasTransform(q.query).transform(index)
+            AtlasTransform(q.query, index).transform()
         except AtlasIndexFieldError as e:
             self.fail(e)
         q = AtlasQ(field2="aaa")
         try:
-            AtlasTransform(q.query).transform(index)
+            AtlasTransform(q.query, index).transform()
         except AtlasIndexFieldError as e:
             self.fail(e)
 
         index.ensured = True
 
         with self.assertRaises(AtlasIndexFieldError):
-            AtlasTransform(q.query).transform(index)
+            AtlasTransform(q.query, index).transform()
 
         q = AtlasQ(field__field2="bbb")
-        try:
-            AtlasTransform(q.query).transform(index)
-        except AtlasIndexFieldError as e:
-            self.fail(e)
 
-        index.use_embedded_documents = False
         with self.assertRaises(AtlasIndexFieldError):
-            AtlasTransform(q.query).transform(index)
+            AtlasTransform(q.query, index).transform()
 
-        index._indexed_fields.append("field.field2")
+        index._indexed_fields["field.field2"] = "string"
         try:
-            AtlasTransform(q.query).transform(index)
+            AtlasTransform(q.query, index).transform()
         except AtlasIndexFieldError as e:
             self.fail(e)
 
     def test__regex(self):
         q = AtlasQ(f__regex=".*")
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         res = t._regex("f", ".*")
         self.assertIn("regex", res)
         self.assertIn("query", res["regex"])
@@ -66,9 +176,9 @@ class TestTransformSteps(TestBaseCase):
         objects = MyDoc.objects.all().values_list("field")
 
         q = AtlasQ(f=objects)
-        positive, negative, aggregations = AtlasTransform(q.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q.query, AtlasIndex("test")
+        ).transform()
 
         self.assertEqual(positive, [{"text": {"query": ["aaa"], "path": "f"}}])
         self.assertEqual(negative, [])
@@ -76,7 +186,7 @@ class TestTransformSteps(TestBaseCase):
 
     def test__exists(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         res = t._exists("field")
         self.assertIn("exists", res)
         self.assertIn("path", res["exists"])
@@ -84,7 +194,7 @@ class TestTransformSteps(TestBaseCase):
 
     def test__range_date_valid(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         time = datetime.datetime.now()
         res = t._range("field", time, "lte")
         self.assertEqual(
@@ -99,32 +209,32 @@ class TestTransformSteps(TestBaseCase):
 
     def test__range_integer_valid(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         res = t._range("field", 3, "lte")
         self.assertEqual(res, {"range": {"path": "field", "lte": 3}})
 
     def test__range_date_invalid(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         time = datetime.datetime.now()
         with self.assertRaises(AtlasFieldError):
             t._range("field", time, "wat")
 
     def test__range_none(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         with self.assertRaises(AtlasFieldError):
             t._range("field", None, "lte")
 
     def test__range_string(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         with self.assertRaises(AtlasFieldError):
             t._range("field", "3", "lte")
 
     def test__equals(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         res = t._equals("field", "aaa")
         self.assertIn("equals", res)
         self.assertIn("path", res["equals"])
@@ -134,7 +244,7 @@ class TestTransformSteps(TestBaseCase):
 
     def test(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         res = t._text("field", "aaa")
         self.assertIn("text", res)
         self.assertIn("path", res["text"])
@@ -144,25 +254,25 @@ class TestTransformSteps(TestBaseCase):
 
     def test_none(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         with self.assertRaises(AtlasFieldError):
             t._text("field", None)
 
     def test__size_operator_not_supported(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         with self.assertRaises(NotImplementedError):
             t._size("field", 0, "lte")
 
     def test__size__not_zero(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         with self.assertRaises(NotImplementedError):
             t._size("field", 3, "ne")
 
     def test__size_equal_zero(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         res = t._size("field", 0, "eq")
         self.assertIn("$match", res)
         self.assertIn("field", res["$match"])
@@ -173,7 +283,7 @@ class TestTransformSteps(TestBaseCase):
 
     def test__size_ne_zero(self):
         q = AtlasQ(f=3)
-        t = AtlasTransform(q.query)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
         res = t._size("field", 0, "ne")
         self.assertIn("$match", res)
         self.assertIn("field", res["$match"])
@@ -187,23 +297,23 @@ class TestAtlasQ(TestBaseCase):
     def test_size_val(self):
         q1 = AtlasQ(key__size=1)
         with self.assertRaises(NotImplementedError):
-            AtlasTransform(q1.query).transform(AtlasIndex("test"))
+            AtlasTransform(q1.query, AtlasIndex("test")).transform()
 
     def test_size_ne(self):
         q1 = AtlasQ(key__size__ne=0)
         with self.assertRaises(NotImplementedError):
-            AtlasTransform(q1.query).transform(AtlasIndex("test"))
+            AtlasTransform(q1.query, AtlasIndex("test")).transform()
 
     def test_size_gte(self):
         q1 = AtlasQ(key__not__size__gte=0)
         with self.assertRaises(NotImplementedError):
-            AtlasTransform(q1.query).transform(AtlasIndex("test"))
+            AtlasTransform(q1.query, AtlasIndex("test")).transform()
 
     def test_size_negative(self):
         q1 = AtlasQ(key__not__size=0)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(positive, [])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -214,9 +324,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_size_positive(self):
         q1 = AtlasQ(key__size=0)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(positive, [])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -227,9 +337,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_none(self):
         q1 = AtlasQ(key__nin=["", None])
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(positive, [])
         self.assertEqual(
@@ -242,9 +352,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_exists_3(self):
         q1 = AtlasQ(key__not__exists=True)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(positive, [])
         self.assertEqual(negative, [{"exists": {"path": "key"}}])
         self.assertEqual(
@@ -254,9 +364,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_exists_2(self):
         q1 = AtlasQ(key__not__exists=False)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(positive, [{"exists": {"path": "key"}}])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -267,9 +377,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_exists_1(self):
         q1 = AtlasQ(key__exists=False)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(positive, [])
         self.assertEqual(negative, [{"exists": {"path": "key"}}])
         self.assertEqual(
@@ -280,9 +390,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_exists_0(self):
         q1 = AtlasQ(key__exists=True)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(positive, [{"exists": {"path": "key"}}])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -293,9 +403,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_negative_equals(self):
         q1 = AtlasQ(key__ne=True)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(positive, [])
         self.assertEqual(
@@ -308,9 +418,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_equals(self):
         q1 = AtlasQ(key=True)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(
@@ -325,9 +435,9 @@ class TestAtlasQ(TestBaseCase):
         date = "2021-01-01T00:00:00.000Z"
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
         q1 = AtlasQ(last_sent_time__lt=date)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(
@@ -347,9 +457,9 @@ class TestAtlasQ(TestBaseCase):
         date = "2021-01-01T00:00:00.000Z"
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
         q1 = AtlasQ(last_sent_time__gte=date)
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(
@@ -367,9 +477,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_whole_word(self):
         q1 = AtlasQ(key__not__wholeword="value")
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual([], aggregations)
         self.assertEqual(
             [
@@ -385,9 +495,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_field_start_with_keyword(self):
         q1 = AtlasQ(key__in=["value"])
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(
@@ -399,10 +509,15 @@ class TestAtlasQ(TestBaseCase):
         )
 
     def test_atlas_q_ne_embedded_document(self):
+        index = AtlasIndex("test")
+        index._indexed_fields = {
+            "f": "embeddedDocuments",
+            "f.g": "embeddedDocuments",
+            "f.g.h": "string",
+        }
+        index.ensured = True
         q = AtlasQ(f__g__h__ne="test")
-        positive, negative, aggregations = AtlasTransform(q.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(q.query, index).transform()
         self.assertEqual(
             negative,
             [
@@ -427,9 +542,14 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_embedded_document(self):
         q = AtlasQ(f__g__h="test")
-        positive, negative, aggregations = AtlasTransform(q.query).transform(
-            AtlasIndex("test")
-        )
+        index = AtlasIndex("test")
+        index._indexed_fields = {
+            "f": "embeddedDocuments",
+            "f.g": "embeddedDocuments",
+            "f.g.h": "string",
+        }
+        index.ensured = True
+        positive, negative, aggregations = AtlasTransform(q.query, index).transform()
         self.assertEqual(
             positive,
             [
@@ -454,9 +574,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_nin(self):
         q1 = AtlasQ(key__nin=["value", "value2"])
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(positive, [])
         self.assertEqual(
@@ -469,9 +589,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_negative(self):
         q1 = AtlasQ(key__ne="value")
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(positive, [])
 
@@ -485,9 +605,9 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q(self):
         q1 = AtlasQ(key="value", key2="value2")
-        positive, negative, aggregations = AtlasTransform(q1.query).transform(
-            AtlasIndex("test")
-        )
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(

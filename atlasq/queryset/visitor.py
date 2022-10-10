@@ -87,9 +87,9 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
     def visit_query(self, query) -> List[Dict]:
         from atlasq.queryset.transform import AtlasTransform
 
-        affirmative, negative, aggregations = AtlasTransform(query.query).transform(
-            self.atlas_index
-        )
+        affirmative, negative, aggregations = AtlasTransform(
+            query.query, self.atlas_index
+        ).transform()
         filters = {}
         if affirmative:
             filters.setdefault("compound", {})["filter"] = affirmative

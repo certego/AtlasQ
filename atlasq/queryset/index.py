@@ -24,6 +24,7 @@ class AtlasIndexType(Enum):
     INTEGER = "integer"
     BOOLEAN = "boolean"
     DATE = "date"
+    OBJECT_ID = "objectId"
 
     @classmethod
     def values(cls) -> List[str]:

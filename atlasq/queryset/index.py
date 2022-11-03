@@ -118,4 +118,4 @@ class AtlasIndex:
             raise AtlasIndexError("Index not ensured")
         if keyword in self._indexed_fields:
             return self._indexed_fields[keyword]
-        raise AtlasIndexFieldError(f"Keyword {keyword} not  present in index")
+        raise AtlasIndexFieldError(f"Keyword {keyword} not present in index")

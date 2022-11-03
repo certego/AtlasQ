@@ -2,6 +2,7 @@ import datetime
 import logging
 from typing import Any, Dict, List, Tuple, Union
 
+from bson import ObjectId
 from mongoengine import QuerySet
 
 from atlasq.queryset.exceptions import AtlasFieldError, AtlasIndexFieldError
@@ -218,7 +219,11 @@ class AtlasTransform:
             else:
                 if not path:
                     path = ".".join(key_parts)
-                if isinstance(value, bool):
+                if isinstance(value, list):
+                    value_to_check = value[0]
+                else:
+                    value_to_check = value
+                if isinstance(value_to_check, (bool, ObjectId)):
                     obj = self._equals(path, value)
                 else:
                     obj = self._text(path, value)

@@ -67,16 +67,17 @@ class AtlasTransform:
     def _regex(self, path: str, value: str):
         return {"regex": {"query": value, "path": path}}
 
-    def _embedded_document(self, path: str, content: Dict):
+    def _embedded_document(self, path: str, content: Dict, positive: bool):
+        operator = "must" if positive else "mustNot"
         return {
             "embeddedDocument": {
                 "path": path,
-                "operator": content,
+                "operator": {"compound": {operator: [content]}},
             }
         }
 
     def _convert_to_embedded_document(
-        self, path: List[str], operator: Dict, start: str = ""
+        self, path: List[str], operator: Dict, positive: bool, start: str = ""
     ):
         element = path.pop(0)
         partial_path = f"{start}.{element}" if start else element
@@ -92,7 +93,10 @@ class AtlasTransform:
             return operator
         return self._embedded_document(
             partial_path,
-            self._convert_to_embedded_document(path, operator, start=partial_path),
+            self._convert_to_embedded_document(
+                path, operator, start=partial_path, positive=positive
+            ),
+            positive,
         )
 
     def _exists(self, path: str) -> Dict:
@@ -229,21 +233,53 @@ class AtlasTransform:
                     obj = self._text(path, value)
 
             if obj:
-                # we are wrapping the result to an embedded document
-                obj = self._convert_to_embedded_document(path.split("."), obj)
-
                 if self.atlas_index.ensured:
-
                     self._ensure_path_is_indexed(path.split("."))
-                logger.debug(obj)
-
-                if to_go == 1:
-                    affirmative.append(obj)
+                # we are wrapping the result to an embedded document
+                converted = self._convert_to_embedded_document(
+                    path.split("."), obj, positive=to_go == 1
+                )
+                if obj != converted:
+                    # we have an embedded object
+                    # the mustNot is done inside the embedded document clause
+                    affirmative = self.merge_embedded_documents(converted, affirmative)
                 else:
-                    negative.append(obj)
+                    if to_go == 1:
+                        affirmative.append(converted)
+                    else:
+                        negative.append(converted)
         if other_aggregations:
             logger.warning(
                 "CARE! You are generating a query that uses other aggregations other than text search!"
                 f" Aggregations generated are {other_aggregations}"
             )
         return affirmative, negative, other_aggregations
+
+    @staticmethod
+    def merge_embedded_documents(obj: Dict, list_of_obj: List[Dict]) -> List[Dict]:
+        list_of_obj = list(list_of_obj)  # I hate function that change stuff in place
+        assert "embeddedDocument" in obj
+        assert "path" in obj["embeddedDocument"]
+        assert "operator" in obj["embeddedDocument"]
+        assert "compound" in obj["embeddedDocument"]["operator"]
+        # path that we want merge
+        path = obj["embeddedDocument"]["path"]
+        keys = list(obj["embeddedDocument"]["operator"]["compound"].keys())
+        assert len(keys) == 1
+        operator = keys[0]  # values could be (must, mustNot)
+        # the actual query
+        content = obj["embeddedDocument"]["operator"]["compound"][operator]
+        for already_present_obj in list_of_obj:
+            # we check for a correspondence
+            if path == already_present_obj["embeddedDocument"]["path"]:
+                # we merge the objects
+                already_present_obj["embeddedDocument"]["operator"][
+                    "compound"
+                ].setdefault(operator, []).extend(content)
+                # we can exit since we are sure that it can be only 1 hit for path
+                # if this method is called at every embedded object
+                break
+        # otherwise we just add the object if no hit has been found
+        else:
+            list_of_obj.append(obj)
+        return list_of_obj

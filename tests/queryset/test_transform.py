@@ -12,6 +12,124 @@ from tests.test_base import TestBaseCase
 
 
 class TestTransformSteps(TestBaseCase):
+    def test_merge_embedded_documents(self):
+        obj = {
+            "embeddedDocument": {
+                "path": "field",
+                "operator": {
+                    "compound": {
+                        "must": [{"text": {"query": "aaa", "path": "field.field2"}}]
+                    }
+                },
+            }
+        }
+        list_of_objs = []
+
+        result = AtlasTransform.merge_embedded_documents(obj, list_of_objs)
+        self.assertEqual(0, len(list_of_objs))
+        self.assertIsInstance(result, list)
+        self.assertEqual(1, len(result))
+        self.assertEqual(obj, result[0])
+
+        list_of_objs = [
+            {
+                "embeddedDocument": {
+                    "path": "field",
+                    "operator": {
+                        "compound": {
+                            "must": [{"text": {"query": "bbb", "path": "field.field3"}}]
+                        }
+                    },
+                }
+            }
+        ]
+        result = AtlasTransform.merge_embedded_documents(obj, list_of_objs)
+        self.assertEqual(1, len(result))
+        self.assertEqual(
+            result[0],
+            {
+                "embeddedDocument": {
+                    "path": "field",
+                    "operator": {
+                        "compound": {
+                            "must": [
+                                {"text": {"query": "bbb", "path": "field.field3"}},
+                                {"text": {"query": "aaa", "path": "field.field2"}},
+                            ]
+                        }
+                    },
+                }
+            },
+        )
+
+        list_of_objs = [
+            {
+                "embeddedDocument": {
+                    "path": "field",
+                    "operator": {
+                        "compound": {
+                            "mustNot": [
+                                {"text": {"query": "bbb", "path": "field.field3"}}
+                            ]
+                        }
+                    },
+                }
+            }
+        ]
+        result = AtlasTransform.merge_embedded_documents(obj, list_of_objs)
+        self.assertEqual(1, len(result))
+        self.assertEqual(
+            result[0],
+            {
+                "embeddedDocument": {
+                    "path": "field",
+                    "operator": {
+                        "compound": {
+                            "must": [
+                                {"text": {"query": "aaa", "path": "field.field2"}}
+                            ],
+                            "mustNot": [
+                                {"text": {"query": "bbb", "path": "field.field3"}}
+                            ],
+                        }
+                    },
+                }
+            },
+        )
+
+    def test__multiple_check_single_embedded_document(self):
+        index = AtlasIndex("test")
+        index.ensured = True
+        index._indexed_fields = {
+            "field": "embeddedDocuments",
+            "field.field2": "string",
+            "field.field3": "string",
+        }
+        q = AtlasQ(field__field2="aaa", field__field3__ne="bbb")
+        try:
+            result = AtlasTransform(q.query, index).transform()
+        except AtlasIndexFieldError as e:
+            self.fail(e)
+        else:
+            self.assertEqual(
+                result[0][0],
+                {
+                    "embeddedDocument": {
+                        "path": "field",
+                        "operator": {
+                            "compound": {
+                                "must": [
+                                    {"text": {"query": "aaa", "path": "field.field2"}}
+                                ],
+                                "mustNot": [
+                                    {"text": {"query": "bbb", "path": "field.field3"}}
+                                ],
+                            }
+                        },
+                    }
+                },
+            )
+
     def test__embedded_document(self):
         index = AtlasIndex("test")
         index.ensured = True
@@ -22,6 +140,7 @@ class TestTransformSteps(TestBaseCase):
         except AtlasIndexFieldError as e:
             self.fail(e)
         else:
+            self.assertEqual(1, len(result[0]))
             self.assertEqual(
                 result[0][0],
                 {

@@ -13,6 +13,27 @@ from tests.test_base import TestBaseCase
 
 
 class TestTransformSteps(TestBaseCase):
+    def test_merge_embedded_documents_to_not_embedded(self):
+        list_of_objs = [
+            {
+                "text": {
+                    "query": "aaa",
+                    "path": "field.field2.field3",
+                }
+            }
+        ]
+        obj = {
+            "embeddedDocument": {
+                "path": "field",
+                "operator": {
+                    "compound": {
+                        "must": [{"text": {"query": "bbb", "path": "field.field4"}}]
+                    }
+                },
+            }
+        }
+        AtlasTransform.merge_embedded_documents(obj, list_of_objs)
+
     def test_merge_embedded_documents_multi_level_different_level(self):
         obj = {
             "embeddedDocument": {

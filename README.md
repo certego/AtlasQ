@@ -20,14 +20,7 @@ Unfortunately, our knowledge is limited, so here we go. If you find a solution t
 The main idea, is that the `filter` should work like an `aggregation`. 
 For doing so, and with keeping the compatibility on how MongoEngine works (i.e. the filter should return a queryset of `Document`) we had to do some work.  
 Calling `.aggregate` instead has to work as MongoEngine expect, meaning a list of dictionaries. 
-#### Features
 
-##### Validation
-We also decided to have, optionally, a validation of the index.
-Two things are checked:
-- The index actually exists (If you query a non-existing index, Atlas as default behaviour will not raise any error).
-- The fields that you are querying are actually indexed(If you query a field that is not indexed, Atlas as default behaviour will not raise any error, and will return an empty list).
-To make these check, you need to call the function `ensure_index` on the queryset:
 
 
 ## Usage
@@ -67,3 +60,52 @@ obj3_from_atlas = MyDocument.atlas.get(AtlasQ(wrong_field="value")) # raises Atl
 
 
 ```
+
+##  Extended Features
+
+### Validation
+We also decided to have, optionally, a validation of the index.
+Two things are checked:
+- The index actually exists (If you query a non-existing index, Atlas as default behaviour will not raise any error).
+- The fields that you are querying are actually indexed(If you query a field that is not indexed, Atlas as default behaviour will not raise any error, and will return an empty list).
+To make these check, you need to call the function `ensure_index` on the queryset:
+
+### EmbeddedDocuments
+Embedded documents are queried in two different ways, depending on how you created your Search Index.
+Remember to ensure the index so that AtlasQ can know how your index is defined
+If you used the [embeddedDocuments](https://www.mongodb.com/docs/atlas/atlas-search/define-field-mappings/#std-label-bson-data-types-embedded-documents) type, AtlasQ will use the [embeddedDocument](https://www.mongodb.com/docs/atlas/atlas-search/embedded-document/) query syntax.
+Otherwise, if you used the [document](https://www.mongodb.com/docs/atlas/atlas-search/define-field-mappings/#document) type, or you did not ensure the index, a normal `text` search with the `.` syntax will be used.
+
+Given a Collection as:
+```python3
+from mongoengine import Document, EmbeddedDocument, EmbeddedDocumentListField, fields
+
+class MyDocument(Document):
+    class MyEmbeddedDocument(EmbeddedDocument):
+        field1 = fields.StringField(required=True)
+        field2 = fields.StringField(required=True)
+    
+    list = EmbeddedDocumentListField(MyEmbeddedDocument)    
+
+```
+and given the following document in the collection
+```python3
+
+MyDocument(list=[MyEmbeddedDocument(field1="aaa", field2="bbb"), MyEmbeddedDocument(field1="ccc", field2="ddd")])
+MyDocument(list=[MyEmbeddedDocument(field1="aaa", field2="ddd"), MyEmbeddedDocument(field1="ccc", field2="bbb")])
+```
+the following query will retrieve both the documents, instead of only the first
+```python3
+assert MyDocument.objects.filter(list__field1="aaa", list__field2="bbb").count() == 2
+
+```
+This is done because each clause will check that `one` document match it, not the these condition must be on the same object.
+
+To solve this, inside AtlasQ, if you write multiple condition that refer to the same EmbeddedObject in a *single* AtlasQ
+object, all the condition must match a single object; if the conditions are in multiple AtlasQ object, the default behaviour will be used
+
+```python3
+assert MyDocument.atlas.filter(list__field1="aaa", list__field2="bbb").count() == 1
+assert MyDocument.atlas.filter(AtlasQ(list__field1="aaa")& AtlasQ(list__field2="bbb")).count() == 2
+```
+

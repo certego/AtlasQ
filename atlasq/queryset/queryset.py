@@ -21,7 +21,6 @@ class AtlasQuerySet(QuerySet):
             "_search_result",
             "_count",
             "_return_objects",
-            "save_execution_time",
             "_other_aggregations",
         )
         qs = super()._clone_into(new_qs)

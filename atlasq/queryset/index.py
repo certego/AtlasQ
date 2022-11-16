@@ -21,7 +21,7 @@ class AtlasIndexType(Enum):
     DOCUMENT = "document"
     EMBEDDED_DOCUMENT = "embeddedDocuments"
     STRING = "string"
-    INTEGER = "integer"
+    NUMBER = "number"
     BOOLEAN = "boolean"
     DATE = "date"
     OBJECT_ID = "objectId"

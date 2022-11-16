@@ -1,4 +1,5 @@
 import copy
+import datetime
 import logging
 from typing import Any, Dict, List, Tuple
 
@@ -38,8 +39,9 @@ class AtlasQuerySet(QuerySet):
         self._search_result: CommandCursor = None
         self._count: bool = False
         self._return_objects: bool = True
-        self.save_execution_time: bool = False
         self._other_aggregations: List[Dict] = []
+        self.__start_time_query: datetime.datetime = None
+        self.__end_time_query: datetime.datetime = None
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access
@@ -65,26 +67,20 @@ class AtlasQuerySet(QuerySet):
                     self._aggrs_query[0]["$search"]["count"] = {"type": "total"}
             self._aggrs_query += self._get_projections()
             self._aggrs_query += self._other_aggregations
-            if not self.save_execution_time:
-                logger.info(self._aggrs_query)
         return self._aggrs_query
 
     @property
     def _cursor(self):
+        self.__start_time_query = datetime.datetime.now()
         if not self._search_result:
-            if self.save_execution_time:
-                from datetime import datetime
-
-                nnow = datetime.now()
             self._search_result = self.__collection_aggregate(self._aggrs)
-            if self.save_execution_time:
-                execution_time = datetime.now() - nnow
-                logger.info(
-                    f"{round(execution_time.total_seconds(), 3)} - {self._aggrs_query}"
-                )
         if not self._return_objects:
             self._cursor_obj = self._search_result
         cursor = super()._cursor
+        self.__end_time_query = datetime.datetime.now()
+        logger.info(
+            f"{round((self.__end_time_query - self.__start_time_query).total_seconds(), 3)} - {self._aggrs_query}"
+        )
         return cursor
 
     def order_by(self, *keys):

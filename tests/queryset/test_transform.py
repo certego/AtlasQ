@@ -111,6 +111,7 @@ class TestTransformSteps(TestBaseCase):
         except AtlasIndexFieldError as e:
             self.fail(e)
         else:
+            print(result[0][0])
             self.assertEqual(
                 result[0][0],
                 {
@@ -146,7 +147,18 @@ class TestTransformSteps(TestBaseCase):
                 {
                     "embeddedDocument": {
                         "path": "field",
-                        "operator": {"text": {"query": "aaa", "path": "field.field2"}},
+                        "operator": {
+                            "compound": {
+                                "must": [
+                                    {
+                                        "text": {
+                                            "query": "aaa",
+                                            "path": "field.field2",
+                                        },
+                                    }
+                                ]
+                            }
+                        },
                     }
                 },
             )
@@ -209,14 +221,26 @@ class TestTransformSteps(TestBaseCase):
                     "embeddedDocument": {
                         "path": "field",
                         "operator": {
-                            "embeddedDocument": {
-                                "path": "field.field2",
-                                "operator": {
-                                    "text": {
-                                        "query": "aaa",
-                                        "path": "field.field2.field3",
-                                    }
-                                },
+                            "compound": {
+                                "must": [
+                                    {
+                                        "embeddedDocument": {
+                                            "path": "field.field2",
+                                            "operator": {
+                                                "compound": {
+                                                    "must": [
+                                                        {
+                                                            "text": {
+                                                                "query": "aaa",
+                                                                "path": "field.field2.field3",
+                                                            }
+                                                        },
+                                                    ]
+                                                }
+                                            },
+                                        }
+                                    },
+                                ]
                             }
                         },
                     }
@@ -240,7 +264,16 @@ class TestTransformSteps(TestBaseCase):
                     "embeddedDocument": {
                         "path": "field",
                         "operator": {
-                            "text": {"query": "aaa", "path": "field.field2.field3"}
+                            "compound": {
+                                "must": [
+                                    {
+                                        "text": {
+                                            "query": "aaa",
+                                            "path": "field.field2.field3",
+                                        }
+                                    },
+                                ]
+                            }
                         },
                     }
                 },
@@ -638,25 +671,40 @@ class TestAtlasQ(TestBaseCase):
         q = AtlasQ(f__g__h__ne="test")
         positive, negative, aggregations = AtlasTransform(q.query, index).transform()
         self.assertEqual(
-            negative,
+            positive,
             [
                 {
                     "embeddedDocument": {
                         "path": "f",
                         "operator": {
-                            "embeddedDocument": {
-                                "path": "f.g",
-                                "operator": {
-                                    "text": {"query": "test", "path": "f.g.h"}
-                                },
+                            "compound": {
+                                "must": [
+                                    {
+                                        "embeddedDocument": {
+                                            "path": "f.g",
+                                            "operator": {
+                                                "compound": {
+                                                    "mustNot": [
+                                                        {
+                                                            "text": {
+                                                                "query": "test",
+                                                                "path": "f.g.h",
+                                                            }
+                                                        },
+                                                    ]
+                                                }
+                                            },
+                                        }
+                                    },
+                                ]
                             }
                         },
                     }
                 }
             ],
-            json.dumps(negative, indent=4),
+            json.dumps(positive, indent=4),
         )
-        self.assertEqual(positive, [])
+        self.assertEqual(negative, [])
         self.assertEqual(aggregations, [])
 
     def test_atlas_q_embedded_document(self):
@@ -676,11 +724,26 @@ class TestAtlasQ(TestBaseCase):
                     "embeddedDocument": {
                         "path": "f",
                         "operator": {
-                            "embeddedDocument": {
-                                "path": "f.g",
-                                "operator": {
-                                    "text": {"query": "test", "path": "f.g.h"}
-                                },
+                            "compound": {
+                                "must": [
+                                    {
+                                        "embeddedDocument": {
+                                            "path": "f.g",
+                                            "operator": {
+                                                "compound": {
+                                                    "must": [
+                                                        {
+                                                            "text": {
+                                                                "query": "test",
+                                                                "path": "f.g.h",
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                        }
+                                    }
+                                ]
                             }
                         },
                     }

@@ -91,12 +91,17 @@ class AtlasTransform:
 
         if not path:
             return operator
+
+        new_operator = self._convert_to_embedded_document(
+            path, operator, start=partial_path, positive=positive
+        )
         return self._embedded_document(
             partial_path,
-            self._convert_to_embedded_document(
-                path, operator, start=partial_path, positive=positive
-            ),
-            positive,
+            new_operator,
+            True
+            if operator != new_operator
+            else positive,  # this cover the case of multiple embeddedDocument,
+            # where only the last one must be set to negative
         )
 
     def _exists(self, path: str) -> Dict:

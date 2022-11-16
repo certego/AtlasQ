@@ -109,3 +109,4 @@ assert MyDocument.atlas.filter(list__field1="aaa", list__field2="bbb").count() =
 assert MyDocument.atlas.filter(AtlasQ(list__field1="aaa")& AtlasQ(list__field2="bbb")).count() == 2
 ```
 
+Note: List of embedded objects inside list of embedded objects are not supported by this feature at the moment (You can review an example on `tests.queryset.test_transform.TestTransformSteps.test_merge_embedded_documents_multi_level_same_level`).

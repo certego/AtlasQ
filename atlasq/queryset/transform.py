@@ -275,6 +275,9 @@ class AtlasTransform:
         # the actual query
         content = obj["embeddedDocument"]["operator"]["compound"][operator]
         for already_present_obj in list_of_obj:
+            # we have added an object that is not actually an embedded object, nothing to do
+            if "embeddedDocument" not in already_present_obj:
+                continue
             # we check for a correspondence
             if path == already_present_obj["embeddedDocument"]["path"]:
                 # we merge the objects

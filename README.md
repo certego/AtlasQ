@@ -75,38 +75,3 @@ Embedded documents are queried in two different ways, depending on how you creat
 Remember to ensure the index so that AtlasQ can know how your index is defined
 If you used the [embeddedDocuments](https://www.mongodb.com/docs/atlas/atlas-search/define-field-mappings/#std-label-bson-data-types-embedded-documents) type, AtlasQ will use the [embeddedDocument](https://www.mongodb.com/docs/atlas/atlas-search/embedded-document/) query syntax.
 Otherwise, if you used the [document](https://www.mongodb.com/docs/atlas/atlas-search/define-field-mappings/#document) type, or you did not ensure the index, a normal `text` search with the `.` syntax will be used.
-
-Given a Collection as:
-```python3
-from mongoengine import Document, EmbeddedDocument, EmbeddedDocumentListField, fields
-
-class MyDocument(Document):
-    class MyEmbeddedDocument(EmbeddedDocument):
-        field1 = fields.StringField(required=True)
-        field2 = fields.StringField(required=True)
-    
-    list = EmbeddedDocumentListField(MyEmbeddedDocument)    
-
-```
-and given the following document in the collection
-```python3
-
-MyDocument(list=[MyEmbeddedDocument(field1="aaa", field2="bbb"), MyEmbeddedDocument(field1="ccc", field2="ddd")])
-MyDocument(list=[MyEmbeddedDocument(field1="aaa", field2="ddd"), MyEmbeddedDocument(field1="ccc", field2="bbb")])
-```
-the following query will retrieve both the documents, instead of only the first
-```python3
-assert MyDocument.objects.filter(list__field1="aaa", list__field2="bbb").count() == 2
-
-```
-This is done because each clause will check that `one` document match it, not the these condition must be on the same object.
-
-To solve this, inside AtlasQ, if you write multiple condition that refer to the same EmbeddedObject in a *single* AtlasQ
-object, all the condition must match a single object; if the conditions are in multiple AtlasQ object, the default behaviour will be used
-
-```python3
-assert MyDocument.atlas.filter(list__field1="aaa", list__field2="bbb").count() == 1
-assert MyDocument.atlas.filter(AtlasQ(list__field1="aaa")& AtlasQ(list__field2="bbb")).count() == 2
-```
-
-Note: List of embedded objects inside list of embedded objects are not supported by this feature at the moment (You can review an example on `tests.queryset.test_transform.TestTransformSteps.test_merge_embedded_documents_multi_level_same_level`).

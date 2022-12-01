@@ -56,6 +56,16 @@ class AtlasQuerySet(QuerySet):
             return iter(self._cursor)
         return super().__iter__()
 
+    def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
+        # we need to get the mongoengine query, the fastest way it to just call _cursor
+        assert self._cursor is not None
+        assert self._query is not None
+        return super(AtlasQuerySet, self).delete(
+            write_concern=write_concern,
+            _from_doc_delete=_from_doc_delete,
+            cascade_refs=cascade_refs,
+        )
+
     @property
     def _aggrs(self):
         # corresponding of _query for us

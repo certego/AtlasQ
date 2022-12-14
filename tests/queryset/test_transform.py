@@ -4,8 +4,7 @@ from unittest import expectedFailure
 
 from mongoengine import Document, fields
 
-from atlasq.queryset import AtlasIndexFieldError
-from atlasq.queryset.exceptions import AtlasFieldError
+from atlasq.queryset.exceptions import AtlasFieldError, AtlasIndexFieldError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.transform import AtlasTransform
@@ -555,7 +554,7 @@ class TestTransformSteps(TestBaseCase):
             {
                 "range": {
                     "path": "field",
-                    "lte": time.replace(minute=0, second=0, microsecond=0),
+                    "lte": time.replace(microsecond=0),
                 }
             },
         )

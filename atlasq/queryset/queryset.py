@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from mongoengine import Q, QuerySet
 from pymongo.command_cursor import CommandCursor
 
-from atlasq.queryset import AtlasIndexError
+from atlasq.queryset.exceptions import AtlasIndexError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 
@@ -41,6 +41,29 @@ class AtlasQuerySet(QuerySet):
         self._other_aggregations: List[Dict] = []
         self.__start_time_query: datetime.datetime = None
         self.__end_time_query: datetime.datetime = None
+
+    def upload_index(
+        self,
+        json_index: Dict,
+        user: str,
+        password: str,
+        group_id: str,
+        cluster_name: str,
+    ):
+        db_name = self._document._get_db().name  # pylint: disable=protected-access
+        collection_name = (
+            self._document._get_collection_name()  # pylint: disable=protected-access
+        )
+        if "collectionName" not in json_index:
+            json_index["collectionName"] = collection_name
+        if "database" not in json_index:
+            json_index["database"] = db_name
+        if "name" not in json_index:
+            json_index["name"] = self.index._index  # pylint: disable=protected-access
+        logger.info(f"Sending {json_index} to create new index")
+        return self.index.upload_index(
+            json_index, user, password, group_id, cluster_name
+        )
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access

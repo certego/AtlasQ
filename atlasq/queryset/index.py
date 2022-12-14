@@ -11,9 +11,12 @@ from atlasq.queryset.exceptions import AtlasIndexError, AtlasIndexFieldError
 logger = getLogger(__name__)
 
 ATLAS_BASE_URL = "https://cloud.mongodb.com/api/atlas/v1.0"
+TEXT_INDEXES_ENDPOINT = (
+    ATLAS_BASE_URL + "/groups/{GROUP_ID}/clusters/{CLUSTER_NAME}/fts/indexes"
+)
+
 LIST_TEXT_INDEXES_ENDPOINT = (
-    ATLAS_BASE_URL
-    + "/groups/{GROUP_ID}/clusters/{CLUSTER_NAME}/fts/indexes/{DATABASE_NAME}/{COLLECTION_NAME}"
+    TEXT_INDEXES_ENDPOINT + "/{DATABASE_NAME}/{COLLECTION_NAME}"
 )
 
 
@@ -54,6 +57,28 @@ class AtlasIndex:
     def index(self, index: str):
         self._index = index
         self.ensured = False
+
+    def upload_index(
+        self,
+        data: Dict,
+        user: str,
+        password: str,
+        group_id: str,
+        cluster_name: str,
+    ):
+        if not self.index:
+            raise AtlasIndexError("No index defined")
+        url = TEXT_INDEXES_ENDPOINT.format(
+            GROUP_ID=group_id,
+            CLUSTER_NAME=cluster_name,
+        )
+        response = requests.post(
+            url,
+            data=data,
+            auth=HTTPDigestAuth(user, password),
+            headers={"Content-Type": "application/json"},
+        )
+        response.raise_for_status()
 
     def ensure_index_exists(
         self,

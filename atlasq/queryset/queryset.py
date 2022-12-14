@@ -1,6 +1,8 @@
 import copy
 import datetime
+import json
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from mongoengine import Q, QuerySet
@@ -41,6 +43,25 @@ class AtlasQuerySet(QuerySet):
         self._other_aggregations: List[Dict] = []
         self.__start_time_query: datetime.datetime = None
         self.__end_time_query: datetime.datetime = None
+
+    def upload_index(
+        self,
+        file_path: Path,
+        user: str,
+        password: str,
+        group_id: str,
+        cluster_name: str,
+    ):
+        db_name = self._document._get_db().name  # pylint: disable=protected-access
+        collection_name = (
+            self._document._get_collection_name()  # pylint: disable=protected-access
+        )
+        with open(file_path) as f:
+            data = json.load(f)
+        data["collectionName"] = collection_name
+        data["database"] = db_name
+        data["name"] = file_path.stem
+        return self.index.upload_index(data, user, password, group_id, cluster_name)
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access

@@ -72,12 +72,15 @@ class AtlasIndex:
             GROUP_ID=group_id,
             CLUSTER_NAME=cluster_name,
         )
+        print(url)
         response = requests.post(
             url,
-            data=data,
+            json=data,
             auth=HTTPDigestAuth(user, password),
             headers={"Content-Type": "application/json"},
         )
+        print(response.text)
+        print(response.content)
         response.raise_for_status()
 
     def ensure_index_exists(

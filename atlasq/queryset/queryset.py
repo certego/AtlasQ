@@ -62,7 +62,8 @@ class AtlasQuerySet(QuerySet):
             data = json.load(f)
         data["collectionName"] = collection_name
         data["database"] = db_name
-        data["name"] = file_path.stem
+        data["name"] = self.index._index  # pylint: disable=protected-access
+        logger.info(f"Sending {data} to create new index")
         return self.index.upload_index(data, user, password, group_id, cluster_name)
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):

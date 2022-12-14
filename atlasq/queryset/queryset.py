@@ -1,9 +1,7 @@
 import copy
 import datetime
-import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 from mongoengine import Q, QuerySet
 from pymongo.command_cursor import CommandCursor
@@ -46,28 +44,26 @@ class AtlasQuerySet(QuerySet):
 
     def upload_index(
         self,
-        file_path: Union[str, Path],
+        json_index: Dict,
         user: str,
         password: str,
         group_id: str,
         cluster_name: str,
     ):
-        if isinstance(file_path, str):
-            file_path = Path(file_path)
         db_name = self._document._get_db().name  # pylint: disable=protected-access
         collection_name = (
             self._document._get_collection_name()  # pylint: disable=protected-access
         )
-        with open(file_path) as f:
-            data = json.load(f)
-        if "collectionName" not in data:
-            data["collectionName"] = collection_name
-        if "database" not in data:
-            data["database"] = db_name
-        if "name" not in data:
-            data["name"] = self.index._index  # pylint: disable=protected-access
-        logger.info(f"Sending {data} to create new index")
-        return self.index.upload_index(data, user, password, group_id, cluster_name)
+        if "collectionName" not in json_index:
+            json_index["collectionName"] = collection_name
+        if "database" not in json_index:
+            json_index["database"] = db_name
+        if "name" not in json_index:
+            json_index["name"] = self.index._index  # pylint: disable=protected-access
+        logger.info(f"Sending {json_index} to create new index")
+        return self.index.upload_index(
+            json_index, user, password, group_id, cluster_name
+        )
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access

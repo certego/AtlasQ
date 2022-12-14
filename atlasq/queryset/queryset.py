@@ -3,7 +3,7 @@ import datetime
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 from mongoengine import Q, QuerySet
 from pymongo.command_cursor import CommandCursor
@@ -46,12 +46,14 @@ class AtlasQuerySet(QuerySet):
 
     def upload_index(
         self,
-        file_path: Path,
+        file_path: Union[str, Path],
         user: str,
         password: str,
         group_id: str,
         cluster_name: str,
     ):
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
         db_name = self._document._get_db().name  # pylint: disable=protected-access
         collection_name = (
             self._document._get_collection_name()  # pylint: disable=protected-access

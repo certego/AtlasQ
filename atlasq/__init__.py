@@ -1,3 +1,17 @@
-from atlasq.queryset import AtlasManager, AtlasQ, AtlasQuerySet
+from atlasq.queryset import (
+    AtlasIndex,
+    AtlasIndexError,
+    AtlasIndexFieldError,
+    AtlasManager,
+    AtlasQ,
+    AtlasQuerySet,
+)
 
-__all__ = ["AtlasQ", "AtlasQuerySet", "AtlasManager"]
+__all__ = [
+    "AtlasQ",
+    "AtlasQuerySet",
+    "AtlasManager",
+    "AtlasIndex",
+    "AtlasIndexFieldError",
+    "AtlasIndexError",
+]

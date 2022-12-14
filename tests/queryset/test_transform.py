@@ -554,7 +554,7 @@ class TestTransformSteps(TestBaseCase):
             {
                 "range": {
                     "path": "field",
-                    "lte": time.replace(minute=0, second=0, microsecond=0),
+                    "lte": time,
                 }
             },
         )

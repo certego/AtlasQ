@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Tuple, Union
 from mongoengine import Q, QuerySet
 from pymongo.command_cursor import CommandCursor
 
-from atlasq.queryset import AtlasIndexError
+from atlasq.queryset.exceptions import AtlasIndexError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 

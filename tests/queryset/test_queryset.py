@@ -5,7 +5,7 @@ from mongomock import command_cursor
 from mongomock.command_cursor import CommandCursor
 
 from atlasq import AtlasManager, AtlasQ
-from atlasq.queryset import AtlasIndexFieldError
+from atlasq.queryset.exceptions import AtlasIndexFieldError
 from tests.test_base import TestBaseCase
 
 

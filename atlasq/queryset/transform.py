@@ -115,7 +115,7 @@ class AtlasTransform:
                 f"Range search for {path} must be {self.range_keywords}, not {keyword}"
             )
         if isinstance(value, datetime.datetime):
-            value = value.replace(minute=0, second=0, microsecond=0)
+            value = value.replace(microsecond=0)
         elif isinstance(value, int):
             pass
         else:

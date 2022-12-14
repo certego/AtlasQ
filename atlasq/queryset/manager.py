@@ -2,7 +2,7 @@ from typing import Union
 
 from mongoengine import QuerySetManager
 
-from atlasq.queryset import AtlasIndex
+from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.queryset import AtlasQuerySet
 
 

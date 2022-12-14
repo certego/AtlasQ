@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from mongoengine import Q, QuerySet
 from pymongo.command_cursor import CommandCursor
 
-from atlasq.queryset import AtlasIndexError
+from atlasq.queryset.exceptions import AtlasIndexError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 
@@ -42,6 +42,29 @@ class AtlasQuerySet(QuerySet):
         self.__start_time_query: datetime.datetime = None
         self.__end_time_query: datetime.datetime = None
 
+    def upload_index(
+        self,
+        json_index: Dict,
+        user: str,
+        password: str,
+        group_id: str,
+        cluster_name: str,
+    ):
+        db_name = self._document._get_db().name  # pylint: disable=protected-access
+        collection_name = (
+            self._document._get_collection_name()  # pylint: disable=protected-access
+        )
+        if "collectionName" not in json_index:
+            json_index["collectionName"] = collection_name
+        if "database" not in json_index:
+            json_index["database"] = db_name
+        if "name" not in json_index:
+            json_index["name"] = self.index._index  # pylint: disable=protected-access
+        logger.info(f"Sending {json_index} to create new index")
+        return self.index.upload_index(
+            json_index, user, password, group_id, cluster_name
+        )
+
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
         db_name = self._document._get_db().name  # pylint: disable=protected-access
         collection_name = (
@@ -55,6 +78,16 @@ class AtlasQuerySet(QuerySet):
         if not self._return_objects:
             return iter(self._cursor)
         return super().__iter__()
+
+    def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
+        # we need to get the mongoengine query, the fastest way it to just call _cursor
+        assert self._cursor is not None
+        assert self._query is not None
+        return super(AtlasQuerySet, self).delete(
+            write_concern=write_concern,
+            _from_doc_delete=_from_doc_delete,
+            cascade_refs=cascade_refs,
+        )
 
     @property
     def _aggrs(self):

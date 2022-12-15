@@ -548,7 +548,7 @@ class TestTransformSteps(TestBaseCase):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query, AtlasIndex("test"))
         time = datetime.datetime.now()
-        res = t._range("field", time, "lte")
+        res = t._range("field", time, ["lte"])
         self.assertEqual(
             res,
             {
@@ -562,7 +562,7 @@ class TestTransformSteps(TestBaseCase):
     def test__range_integer_valid(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query, AtlasIndex("test"))
-        res = t._range("field", 3, "lte")
+        res = t._range("field", 3, ["lte"])
         self.assertEqual(res, {"range": {"path": "field", "lte": 3}})
 
     def test__range_date_invalid(self):
@@ -570,19 +570,19 @@ class TestTransformSteps(TestBaseCase):
         t = AtlasTransform(q.query, AtlasIndex("test"))
         time = datetime.datetime.now()
         with self.assertRaises(AtlasFieldError):
-            t._range("field", time, "wat")
+            t._range("field", time, ["wat"])
 
     def test__range_none(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query, AtlasIndex("test"))
         with self.assertRaises(AtlasFieldError):
-            t._range("field", None, "lte")
+            t._range("field", None, ["lte"])
 
     def test__range_string(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query, AtlasIndex("test"))
         with self.assertRaises(AtlasFieldError):
-            t._range("field", "3", "lte")
+            t._range("field", "3", ["lte"])
 
     def test__equals(self):
         q = AtlasQ(f=3)

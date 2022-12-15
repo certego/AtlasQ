@@ -41,12 +41,15 @@ class AtlasTransform:
     negative_keywords = ["ne", "nin", "not"]
     exists_keywords = ["exists"]
     range_keywords = ["gt", "gte", "lt", "lte"]
-    equals_keywords = ["exact", "iexact", "eq"]
+    equals_keywords = []
     text_keywords = [
         "contains",
         "icontains",
         "iwholeword",
         "wholeword",
+        "exact",
+        "iexact",
+        "eq",
     ]
     regex_keywords = ["regex", "iregex"]
     size_keywords = ["size"]
@@ -108,12 +111,13 @@ class AtlasTransform:
         return {"exists": {"path": path}}
 
     def _range(
-        self, path: str, value: Union[int, datetime.datetime], keyword: str
+        self, path: str, value: Union[int, datetime.datetime], keywords: List[str]
     ) -> Dict:
-        if keyword not in self.range_keywords:
-            raise AtlasFieldError(
-                f"Range search for {path} must be {self.range_keywords}, not {keyword}"
-            )
+        for keyword in keywords:
+            if keyword not in self.range_keywords:
+                raise AtlasFieldError(
+                    f"Range search for {path} must be {self.range_keywords}, not {keyword}"
+                )
         if isinstance(value, datetime.datetime):
             value = value.replace(microsecond=0)
         elif isinstance(value, int):
@@ -122,7 +126,7 @@ class AtlasTransform:
             raise AtlasFieldError(
                 f"Range search for {path} must have a value of datetime or integer"
             )
-        return {"range": {"path": path, keyword: value}}
+        return {"range": {"path": path, **{keyword: value for keyword in keywords}}}
 
     def _equals(self, path: str, value: Any) -> Dict:
         return {
@@ -214,7 +218,7 @@ class AtlasTransform:
                     break
 
                 if keyword in self.range_keywords:
-                    obj = self._range(path, value, keyword)
+                    obj = self._range(path, value, [keyword])
                     break
                 if keyword in self.equals_keywords:
                     obj = self._equals(path, value)
@@ -234,6 +238,8 @@ class AtlasTransform:
                     value_to_check = value
                 if isinstance(value_to_check, (bool, ObjectId)):
                     obj = self._equals(path, value)
+                elif isinstance(value_to_check, int):
+                    obj = self._range(path, value, ["gte", "lte"])
                 else:
                     obj = self._text(path, value)
 

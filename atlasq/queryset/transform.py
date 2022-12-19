@@ -128,30 +128,33 @@ class AtlasTransform:
             )
         return {"range": {"path": path, **{keyword: value for keyword in keywords}}}
 
-    def _equals(
-        self, path: str, value: Union[List[Union[ObjectId, bool]], ObjectId, bool]
-    ) -> Dict:
-        if isinstance(value, list):
-            values = value
-            return {
-                "compound": {
-                    "should": [
-                        {
-                            "equals": {
-                                "path": path,
-                                "value": value,
-                            }
-                        }
-                        for value in values
-                    ]
-                }
-            }
+    def _single_equals(self, path, value: Union[ObjectId, bool]):
+        if not isinstance(value, (ObjectId, bool)):
+            raise AtlasFieldError(
+                f"Text search for equals on {path=} cannot be {value}, must be ObjectId or bool"
+            )
         return {
             "equals": {
                 "path": path,
                 "value": value,
             }
         }
+
+    def _equals(
+        self, path: str, value: Union[List[Union[ObjectId, bool]], ObjectId, bool]
+    ) -> Dict:
+        if isinstance(value, list):
+
+            values = value
+            if not values:
+                raise AtlasFieldError(
+                    f"Text search for equals on {path=} cannot be empty"
+                )
+            base = {"compound": {"should": [], "minimumShouldMatch": 1}}
+            for value in values:
+                base["compound"]["should"].append(self._single_equals(path, value))
+            return base
+        return self._single_equals(path, value)
 
     def _text(self, path: str, value: Any) -> Dict:
         if not value:

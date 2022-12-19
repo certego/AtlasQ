@@ -128,7 +128,24 @@ class AtlasTransform:
             )
         return {"range": {"path": path, **{keyword: value for keyword in keywords}}}
 
-    def _equals(self, path: str, value: Any) -> Dict:
+    def _equals(
+        self, path: str, value: Union[List[Union[ObjectId, bool]], ObjectId, bool]
+    ) -> Dict:
+        if isinstance(value, list):
+            values = value
+            return {
+                "compound": {
+                    "should": [
+                        {
+                            "equals": {
+                                "path": path,
+                                "value": value,
+                            }
+                        }
+                        for value in values
+                    ]
+                }
+            }
         return {
             "equals": {
                 "path": path,

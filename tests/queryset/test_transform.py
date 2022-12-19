@@ -2,6 +2,7 @@ import datetime
 import json
 from unittest import expectedFailure
 
+from bson import ObjectId
 from mongoengine import Document, fields
 
 from atlasq.queryset.exceptions import AtlasFieldError, AtlasIndexFieldError
@@ -584,15 +585,47 @@ class TestTransformSteps(TestBaseCase):
         with self.assertRaises(AtlasFieldError):
             t._range("field", "3", ["lte"])
 
-    def test__equals(self):
+    def test__equals_string(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query, AtlasIndex("test"))
-        res = t._equals("field", "aaa")
+        with self.assertRaises(AtlasFieldError):
+            t._equals("field", "aaa")
+
+    def test__equals_bool(self):
+        q = AtlasQ(f=3)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        res = t._equals("field", True)
         self.assertIn("equals", res)
         self.assertIn("path", res["equals"])
         self.assertIn("value", res["equals"])
         self.assertEqual(res["equals"]["path"], "field")
-        self.assertEqual(res["equals"]["value"], "aaa")
+        self.assertEqual(res["equals"]["value"], True)
+
+    def test__equals_objectid(self):
+        q = AtlasQ(f=3)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        id = ObjectId("5e45de3dd2bfea029b68cce2")
+        res = t._equals("field", id)
+        self.assertIn("equals", res)
+        self.assertIn("path", res["equals"])
+        self.assertIn("value", res["equals"])
+        self.assertEqual(res["equals"]["path"], "field")
+        self.assertEqual(res["equals"]["value"], id)
+
+    def test__equals_list_bool(self):
+        q = AtlasQ(f=3)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        res = t._equals("field", [True])
+        self.assertIn("compound", res)
+        self.assertIn("minimumShouldMatch", res["compound"])
+        self.assertEqual(1, res["compound"]["minimumShouldMatch"])
+        self.assertIn("should", res["compound"])
+        self.assertEqual(1, len(res["compound"]["should"]))
+        self.assertIn("equals", res["compound"]["should"][0])
+        self.assertIn("path", res["compound"]["should"][0]["equals"])
+        self.assertIn("value", res["compound"]["should"][0]["equals"])
+        self.assertEqual(res["compound"]["should"][0]["equals"]["path"], "field")
+        self.assertEqual(res["compound"]["should"][0]["equals"]["value"], True)
 
     def test(self):
         q = AtlasQ(f=3)

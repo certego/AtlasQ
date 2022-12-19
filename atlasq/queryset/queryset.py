@@ -163,7 +163,7 @@ class AtlasQuerySet(QuerySet):
             collection = self._collection.with_options(
                 read_preference=self._read_preference, read_concern=self._read_concern
             )
-        logger.debug(final_pipeline)
+        logger.info(final_pipeline)
         return collection.aggregate(final_pipeline, cursor={}, **kwargs)
 
     def aggregate(self, pipeline, **kwargs):  # pylint: disable=arguments-differ

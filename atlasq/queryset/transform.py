@@ -12,6 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 class AtlasTransform:
+
+    id_keywords = [
+        "pk",
+        "id",
+        "_id",
+    ]
+
     keywords = [
         "ne",
         "lt",
@@ -207,15 +214,17 @@ class AtlasTransform:
             key_parts = key.split("__")
             obj = None
             path = ""
-            for i, key_part in enumerate(key_parts):
-                if key_part not in self.keywords:
+            for i, keyword in enumerate(key_parts):
+
+                if keyword in self.id_keywords:
+                    keyword = "_id"
+                if keyword not in self.keywords:
                     continue
                 # the key_part is made of "field__subfield__keywords
                 # meaning that the first time that we find a keyword, we have the entire path
                 if not path:
                     path = ".".join(key_parts[:i])
 
-                keyword = key_part
                 if keyword in self.not_converted:
                     raise NotImplementedError(f"Keyword {keyword} not implemented yet")
                 if keyword in self.negative_keywords:

@@ -80,9 +80,7 @@ class AtlasIndex:
         if not isinstance(data["mappings"]["fields"], dict):
             raise AtlasIndexError("The fields keyword should be a dictionary")
 
-        if any(
-            [id_keyword in data["mappings"]["fields"] for id_keyword in ["id", "pk"]]
-        ):
+        if any(id_keyword in data["mappings"]["fields"] for id_keyword in ["id", "pk"]):
             if "_id" not in data["mappings"]["fields"]:
                 data["mappings"]["fields"]["_id"] = {
                     "type": AtlasIndexType.OBJECT_ID.value

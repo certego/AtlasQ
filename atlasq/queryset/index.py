@@ -68,6 +68,24 @@ class AtlasIndex:
     ):
         if not self.index:
             raise AtlasIndexError("No index defined")
+
+        if not isinstance(data, dict):
+            raise AtlasIndexError("The index should be a dictionary")
+        if "mappings" not in data:
+            raise AtlasIndexError("There is no 'mappings' in the index")
+        if not isinstance(data["mappings"], dict):
+            raise AtlasIndexError("The mappings keyword should be a dictionary")
+        if "fields" not in data["mappings"]:
+            raise AtlasIndexError("There is no 'mappings' in the index")
+        if not isinstance(data["mappings"]["fields"], dict):
+            raise AtlasIndexError("The fields keyword should be a dictionary")
+
+        if any(id_keyword in data["mappings"]["fields"] for id_keyword in ["id", "pk"]):
+            if "_id" not in data["mappings"]["fields"]:
+                data["mappings"]["fields"]["_id"] = {
+                    "type": AtlasIndexType.OBJECT_ID.value
+                }
+
         url = TEXT_INDEXES_ENDPOINT.format(
             GROUP_ID=group_id,
             CLUSTER_NAME=cluster_name,

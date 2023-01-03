@@ -8,7 +8,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # otherwise, you do not retrieve the tags
       - uses: actions/setup-python@v1
         with:
           python-version: "3.x"

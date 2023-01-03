@@ -197,6 +197,26 @@ class AtlasTransform:
                 )
             start = partial_path
 
+    @staticmethod
+    def _cast_to_object_id(
+        value: Union[str, ObjectId, List[Union[str, ObjectId]]]
+    ) -> Union[ObjectId, List[ObjectId]]:
+        if isinstance(value, str):
+            value = ObjectId(value)
+        elif isinstance(value, list):
+            for j in range(len(value)):  # pylint: disable=consider-using-enumerate
+                if isinstance(value[j], str):
+                    value[j] = ObjectId(value[j])
+                elif isinstance(value[j], ObjectId):
+                    pass
+                else:
+                    raise TypeError(f"Wrong type {type(value[j])} for id field")
+        elif isinstance(value, ObjectId):
+            pass
+        else:
+            raise TypeError(f"Wrong type {type(value)} for id field")
+        return value
+
     def transform(self) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         other_aggregations = []
         affirmative = []
@@ -218,6 +238,8 @@ class AtlasTransform:
 
                 if keyword in self.id_keywords:
                     keyword = "_id"
+                    key_parts[i] = keyword
+                    value = self._cast_to_object_id(value)
                 if keyword not in self.keywords:
                     continue
                 # the key_part is made of "field__subfield__keywords

@@ -1,3 +1,67 @@
+[build-system]
+requires = ["setuptools>=56.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlasq"
+description="Query proxy that allows the usage of AtlasSearch with mongoengine specific syntax"
+
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+
+
+maintainers = [
+  {name = "Simone Berni", email = "s.berni@certego.net"}
+]
+keywords=["certego","atlas","mongoengine","python","search","textsearch","atlassearch"]
+
+requires-python = ">=3.6"
+
+
+classifiers = [
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: BSD License",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dynamic = ["version", "dependencies"]
+
+
+[project.urls]
+homepage = "https://github.com/certego/atlasq"
+repository = "https://github.com/certego/atlasq"
+documentation = "https://github.com/certego/atlasq/README.md"
+source = "https://github.com/certego/atlasq"
+tracker = "https://github.com/certego/atlasq/issues"
+
+[tool.setuptools]
+py-modules = []
+
+[tool.setuptools_scm]
+write_to = "./version.py"
+local_scheme = "no-local-version"
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.optional-dependencies]
+test = [
+    "black==22.3.0",
+    "isort==5.10.1",
+    "pylint==2.13.9",
+    "flake8==4.0.1",
+    "pre-commit==2.19.0",
+    "tox==3.25.0",
+    "tox-gh-actions==2.9.1",
+    "codecov==2.1.12",
+    "coverage==6.4",
+    "mongomock==4.0.0",
+]
+
 [tool.black]
 exclude = '''
 /(

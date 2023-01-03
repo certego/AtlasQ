@@ -204,7 +204,7 @@ class AtlasTransform:
         if isinstance(value, str):
             value = ObjectId(value)
         elif isinstance(value, list):
-            for j in range(len(value)):
+            for j in range(len(value)):  # pylint: disable=consider-using-enumerate
                 if isinstance(value[j], str):
                     value[j] = ObjectId(value[j])
                 elif isinstance(value[j], ObjectId):

@@ -601,7 +601,7 @@ class TestTransformSteps(TestBaseCase):
         self.assertEqual(res["equals"]["path"], "field")
         self.assertEqual(res["equals"]["value"], True)
 
-    def test__equals_objectid(self):
+    def test__equals_object_id(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query, AtlasIndex("test"))
         id = ObjectId("5e45de3dd2bfea029b68cce2")
@@ -611,6 +611,28 @@ class TestTransformSteps(TestBaseCase):
         self.assertIn("value", res["equals"])
         self.assertEqual(res["equals"]["path"], "field")
         self.assertEqual(res["equals"]["value"], id)
+
+    def test_cast_to_object_id(self):
+        id = "5e45de3dd2bfea029b68cce2"
+        res = AtlasTransform._cast_to_object_id(id)
+        self.assertIsInstance(res, ObjectId)
+
+        id = ObjectId("5e45de3dd2bfea029b68cce2")
+        res = AtlasTransform._cast_to_object_id(id)
+        self.assertIsInstance(res, ObjectId)
+
+        id = 3
+        with self.assertRaises(TypeError):
+            AtlasTransform._cast_to_object_id(id)
+
+        id = [ObjectId("5e45de3dd2bfea029b68cce2"), 3]
+        with self.assertRaises(TypeError):
+            AtlasTransform._cast_to_object_id(id)
+
+        id = [ObjectId("5e45de3dd2bfea029b68cce2"), "5e45de3dd2bfea029b68cce2"]
+        res = AtlasTransform._cast_to_object_id(id)
+        for i in res:
+            self.assertIsInstance(i, ObjectId)
 
     def test__equals_list_bool(self):
         q = AtlasQ(f=3)
@@ -679,6 +701,31 @@ class TestTransformSteps(TestBaseCase):
 
 
 class TestAtlasQ(TestBaseCase):
+    def test_ids_in(self):
+        q1 = AtlasQ(id__in=["5e45de3dd2bfea029b68cce2"])
+        positive, negative, aggregations = AtlasTransform(
+            q1.query, AtlasIndex("test")
+        ).transform()
+        self.assertEqual(aggregations, [])
+        self.assertEqual(negative, [])
+        self.assertEqual(
+            {
+                "compound": {
+                    "should": [
+                        {
+                            "equals": {
+                                "path": "_id",
+                                "value": ObjectId("5e45de3dd2bfea029b68cce2"),
+                            }
+                        }
+                    ],
+                    "minimumShouldMatch": 1,
+                }
+            },
+            positive[0],
+            json.dumps(positive, indent=4, default=str),
+        )
+
     def test_size_val(self):
         q1 = AtlasQ(key__size=1)
         with self.assertRaises(NotImplementedError):

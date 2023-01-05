@@ -40,7 +40,7 @@ source = "https://github.com/certego/atlasq"
 tracker = "https://github.com/certego/atlasq/issues"
 
 [tool.setuptools]
-py-modules = []
+py-modules = ["atlasq"]
 
 [tool.setuptools_scm]
 write_to = "./version.py"

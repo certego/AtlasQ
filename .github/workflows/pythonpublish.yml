@@ -22,7 +22,7 @@ jobs:
 
       - name: Build a source tarball
         run: |
-          python -m build --sdist  --outdir dist/
+          python -m build --sdist --wheel --outdir dist/
 
       - name: Publish to PyPi
         uses: pypa/gh-action-pypi-publish@release/v1

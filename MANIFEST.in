@@ -3,3 +3,4 @@ include requirements.txt
 include dev-requirements.txt
 include LICENSE.txt
 include version.py
+include pyproject.toml

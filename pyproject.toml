@@ -31,7 +31,6 @@ classifiers = [
 ]
 dynamic = ["version", "dependencies"]
 
-
 [project.urls]
 homepage = "https://github.com/certego/atlasq"
 repository = "https://github.com/certego/atlasq"
@@ -39,8 +38,6 @@ documentation = "https://github.com/certego/atlasq/README.md"
 source = "https://github.com/certego/atlasq"
 tracker = "https://github.com/certego/atlasq/issues"
 
-[tool.setuptools]
-py-modules = ["atlasq"]
 
 [tool.setuptools_scm]
 write_to = "./version.py"

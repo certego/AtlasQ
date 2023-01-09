@@ -289,7 +289,7 @@ class AtlasTransform:
                     value_to_check = value
                 if isinstance(value_to_check, (bool, ObjectId)):
                     obj = self._equals(path, value)
-                elif isinstance(value_to_check, int):
+                elif isinstance(value_to_check, (int, datetime.datetime)):
                     obj = self._range(path, value, ["gte", "lte"])
                 else:
                     obj = self._text(path, value)

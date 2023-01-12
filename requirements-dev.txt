@@ -1,0 +1,2 @@
+pre-commit==2.19.0
+mongomock==4.0.0

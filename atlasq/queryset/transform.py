@@ -321,9 +321,10 @@ class AtlasTransform:
                     # the mustNot is done inside the embedded document clause
                     affirmative = self.merge_embedded_documents(converted, affirmative)
                 else:
-                    affirmative.append(converted) if to_go == 1 else negative.append(
-                        converted
-                    )
+                    if to_go == 1:
+                        affirmative.append(converted)
+                    else:
+                        negative.append(converted)
         if other_aggregations:
             logger.warning(
                 "CARE! You are generating a query that uses other aggregations other than text search!"

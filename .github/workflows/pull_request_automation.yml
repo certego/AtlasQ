@@ -45,5 +45,5 @@ jobs:
 
       python_versions: >-
         ["3.8", "3.9", "3.10"]
-      max_timeout: 5
+      max_timeout: 7
       ubuntu_version: latest

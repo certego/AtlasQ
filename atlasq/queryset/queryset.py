@@ -194,15 +194,15 @@ class AtlasQuerySet(QuerySet):
         try:
             count = next(cursor)
         except StopIteration:
-            super()._len = 0
+            self._len = 0  # pylint: disable=attribute-defined-outside-init
         else:
             logger.debug(count)
             if self._query_obj:
-                super()._len = count["meta"]["count"]["total"]
+                self._len = count["meta"]["count"]["total"]  # pylint: disable=attribute-defined-outside-init
             else:
-                super()._len = count["count"]
-        logger.debug(super()._len)
-        return super()._len
+                self._len = count["count"]  # pylint: disable=attribute-defined-outside-init
+        logger.debug(self._len)
+        return self._len
 
     def limit(self, n):
         qs = self.clone()

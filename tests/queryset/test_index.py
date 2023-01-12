@@ -1,8 +1,7 @@
 from unittest.mock import patch
 
-from requests import HTTPError
-
 from atlasq.queryset.index import AtlasIndex
+from requests import HTTPError
 from tests.test_base import TestBaseCase
 
 
@@ -130,9 +129,7 @@ class TestIndex(TestBaseCase):
                 200,
             ),
         ):
-            result = index.ensure_index_exists(
-                "user", "password", "project", "cluster", "db", "collection"
-            )
+            result = index.ensure_index_exists("user", "password", "project", "cluster", "db", "collection")
             self.assertTrue(result)
             self.assertTrue(index.ensured)
             self.assertCountEqual(index._indexed_fields, ["field1", "field2"])
@@ -161,9 +158,7 @@ class TestIndex(TestBaseCase):
                 200,
             ),
         ):
-            result = index.ensure_index_exists(
-                "user", "password", "project", "cluster", "db", "collection"
-            )
+            result = index.ensure_index_exists("user", "password", "project", "cluster", "db", "collection")
             self.assertFalse(result)
             self.assertFalse(index.ensured)
             self.assertCountEqual(index._indexed_fields, [])
@@ -181,6 +176,4 @@ class TestIndex(TestBaseCase):
             ),
         ):
             with self.assertRaises(HTTPError):
-                index.ensure_index_exists(
-                    "user", "password", "group", "cluster", "db", "collection"
-                )
+                index.ensure_index_exists("user", "password", "group", "cluster", "db", "collection")

@@ -1,11 +1,10 @@
 from unittest.mock import patch
 
+from atlasq import AtlasManager, AtlasQ
+from atlasq.queryset.exceptions import AtlasIndexFieldError
 from mongoengine import Document, ListField, StringField
 from mongomock import command_cursor
 from mongomock.command_cursor import CommandCursor
-
-from atlasq import AtlasManager, AtlasQ
-from atlasq.queryset.exceptions import AtlasIndexFieldError
 from tests.test_base import TestBaseCase
 
 
@@ -123,9 +122,7 @@ class TestQuerySet(TestBaseCase):
         with patch(
             "mongomock.aggregate.process_pipeline",
             side_effect=[
-                command_cursor.CommandCursor(
-                    [{"_id": self.obs.id, "name": self.obs.name}]
-                ),
+                command_cursor.CommandCursor([{"_id": self.obs.id, "name": self.obs.name}]),
             ],
         ):
             self.assertEqual(len(qs), 1)
@@ -153,14 +150,10 @@ class TestQuerySet(TestBaseCase):
         with patch(
             "mongomock.aggregate.process_pipeline",
             side_effect=[
-                command_cursor.CommandCursor(
-                    [{"_id": self.obs.id, "name": self.obs.name}]
-                ),
+                command_cursor.CommandCursor([{"_id": self.obs.id, "name": self.obs.name}]),
             ],
         ):
-            self.assertEqual(
-                self.base.filter(name="test.com").first().name, self.obs.name
-            )
+            self.assertEqual(self.base.filter(name="test.com").first().name, self.obs.name)
 
     def test_get(self):
         with patch(
@@ -175,9 +168,7 @@ class TestQuerySet(TestBaseCase):
         with patch(
             "mongomock.aggregate.process_pipeline",
             side_effect=[
-                command_cursor.CommandCursor(
-                    [{"_id": self.obs.id, "name": self.obs.name}]
-                ),
+                command_cursor.CommandCursor([{"_id": self.obs.id, "name": self.obs.name}]),
             ],
         ):
             self.assertEqual(self.base.get(name="test.com").name, self.obs.name)

@@ -1,7 +1,6 @@
-from mongoengine import Document, fields
-
 from atlasq import AtlasManager
 from atlasq.queryset.node import AtlasQ, AtlasQCombination
+from mongoengine import Document, fields
 from tests.test_base import TestBaseCase
 
 
@@ -44,10 +43,6 @@ class TestAtlasQCombination(TestBaseCase):
         self.assertTrue(bool(AtlasQCombination(AtlasQCombination.AND, [AtlasQ(f=1)])))
 
     def test__combine(self):
-        q1 = AtlasQCombination(
-            AtlasQCombination.AND, [AtlasQ(field=3), AtlasQ(field2=4)]
-        )
-        q2 = AtlasQCombination(
-            AtlasQCombination.AND, [AtlasQ(field3=3), AtlasQ(field4=4)]
-        )
+        q1 = AtlasQCombination(AtlasQCombination.AND, [AtlasQ(field=3), AtlasQ(field2=4)])
+        q2 = AtlasQCombination(AtlasQCombination.AND, [AtlasQ(field3=3), AtlasQ(field4=4)])
         self.assertIsInstance(q1._combine(q2, q1.AND), AtlasQCombination)

@@ -47,7 +47,7 @@ ignore=manage.py,
 
 # Add files or directories matching the regex patterns to the ignore-list. The
 # regex matches against paths and can be in Posix or Windows format.
-ignore-paths=
+ignore-paths=tests
 
 # Files or directories matching the regex patterns are skipped. The regex
 # matches against base names, not paths. The default value ignores Emacs file
@@ -76,7 +76,7 @@ limit-inference-results=100
 
 # List of plugins (as comma separated values of python module names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_django
+load-plugins=
 
 # Pickle collected data for later comparisons.
 persistent=no
@@ -150,14 +150,11 @@ disable=abstract-method,
         deprecated-pragma,
         file-ignored,
         fixme,
-        hard-coded-auth-user,
         import-outside-toplevel,
-        imported-auth-user,
         locally-disabled,
         logging-format-interpolation,
         logging-fstring-interpolation,
         missing-docstring,
-        modelform-uses-exclude,  # very questionable rule from django plugin
         possibly-unused-variable,
         raise-missing-from,
         raw-checker-failed,
@@ -171,6 +168,9 @@ disable=abstract-method,
         too-many-statements,
         unused-wildcard-import,
         useless-suppression,
+        wrong-import-order,
+        cyclic-import,
+        import-error,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -209,7 +209,7 @@ int-import-graph=
 known-standard-library=
 
 # Force import order to recognize a module as part of a third party library.
-known-third-party=enchant
+known-third-party=mongoengine
 
 # Couples of modules and preferred modules, separated by a comma.
 preferred-modules=
@@ -323,7 +323,10 @@ good-names=i,
            k,
            ex,
            Run,
-           _
+           _,
+           qs,
+           q,
+           n
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted

@@ -19,7 +19,7 @@ class _AtlasCache:
         def __init__(self, key):
             super().__init__(f"Cache key {key} not found")
 
-    def __init__(self, document: Type[Document], **kwargs):
+    def __init__(self, document: Type[Document]):
         self._document = document
         self._collection = self._document._get_collection_name()
         self._max_minutes = 30
@@ -27,9 +27,7 @@ class _AtlasCache:
     def _aggregations_to_key(self, aggregations: List[Dict]) -> str:
         digest = hashlib.sha256()
         for aggregation in aggregations:
-            digest.update(
-                json.dumps(aggregation, sort_keys=True, default=str).encode("utf-8")
-            )
+            digest.update(json.dumps(aggregation, sort_keys=True, default=str).encode("utf-8"))
         return digest.hexdigest()
 
     def get(self, aggregations: List[Dict], force: bool = False) -> QuerySet:
@@ -59,38 +57,21 @@ class AtlasDbCache(_AtlasCache):
         key = self._aggregations_to_key(aggregations)
         return f"{self._document._meta['collection']}_{key}"  # pylint: disable=protected-access
 
-    def get_collection_expiration(
-        self, collection: Document
-    ) -> Union[datetime.datetime, None]:
-        return collection._meta.get(  # pylint: disable=protected-access
-            "expire_at", None
-        )
+    def get_collection_expiration(self, collection: Document) -> Union[datetime.datetime, None]:
+        return collection._meta.get("expire_at", None)  # pylint: disable=protected-access
 
     def remove(self, aggregations: List[Dict]) -> None:
-        with switch_db(
-            self._document, self._db_connection_alias
-        ) as OtherDbCollection:  # pylint: disable=invalid-name
-            with switch_collection(
-                OtherDbCollection, self.get_collection_name(aggregations)
-            ) as OtherCollection:  # pylint: disable=invalid-name
+        with switch_db(self._document, self._db_connection_alias) as OtherDbCollection:  # pylint: disable=invalid-name
+            with switch_collection(OtherDbCollection, self.get_collection_name(aggregations)) as OtherCollection:  # pylint: disable=invalid-name
                 OtherCollection.drop_collection()
-                if (
-                    "expire_at"
-                    in OtherCollection._meta  # pylint: disable=protected-access
-                ):
-                    del OtherCollection._meta[  # pylint: disable=protected-access
-                        "expire_at"
-                    ]
+                if "expire_at" in OtherCollection._meta:  # pylint: disable=protected-access
+                    del OtherCollection._meta["expire_at"]  # pylint: disable=protected-access
 
     def get(self, aggregations: List[Dict], force: bool = False) -> QuerySet:
         key = self._aggregations_to_key(aggregations)
         collection = self.get_collection_name(aggregations)
-        with switch_db(
-            self._document, self._db_connection_alias
-        ) as OtherDbCollection:  # pylint: disable=invalid-name
-            with switch_collection(
-                OtherDbCollection, collection
-            ) as OtherCollection:  # pylint: disable=invalid-name
+        with switch_db(self._document, self._db_connection_alias) as OtherDbCollection:  # pylint: disable=invalid-name
+            with switch_collection(OtherDbCollection, collection) as OtherCollection:  # pylint: disable=invalid-name
                 expire_at = self.get_collection_expiration(OtherCollection)
                 if not expire_at:
                     logger.debug(f"Db Cache miss for {key}")
@@ -105,20 +86,12 @@ class AtlasDbCache(_AtlasCache):
     def set(self, aggregations: List[Dict], value: QuerySet, max_minutes: int) -> None:
         raise NotImplementedError()
 
-    def set_collection_expiration(
-        self, aggregations: List[Dict], max_minutes: int
-    ) -> None:
+    def set_collection_expiration(self, aggregations: List[Dict], max_minutes: int) -> None:
         key = self._aggregations_to_key(aggregations)
         collection = self.get_collection_name(aggregations)
-        with switch_db(
-            self._document, self._db_connection_alias
-        ) as OtherDbCollection:  # pylint: disable=invalid-name
-            with switch_collection(
-                OtherDbCollection, collection
-            ) as OtherCollection:  # pylint: disable=invalid-name
-                OtherCollection._meta[  # pylint: disable=protected-access
-                    "expire_at"
-                ] = datetime.datetime.now() + datetime.timedelta(minutes=max_minutes)
+        with switch_db(self._document, self._db_connection_alias) as OtherDbCollection:  # pylint: disable=invalid-name
+            with switch_collection(OtherDbCollection, collection) as OtherCollection:  # pylint: disable=invalid-name
+                OtherCollection._meta["expire_at"] = datetime.datetime.now() + datetime.timedelta(minutes=max_minutes)  # pylint: disable=protected-access
 
         logger.debug(f"Db Cache expiration set for {key}")
 
@@ -168,12 +141,8 @@ class AtlasCache(AtlasDbCache, AtlasRamCache):
             objects = AtlasDbCache.get(self, aggregations, force)
             # if the db cache worked, we set the ram cache
             # we need to copy the expiration time
-            with switch_db(
-                self._document, self._db_connection_alias
-            ) as OtherDbCollection:  # pylint: disable=invalid-name
-                with switch_collection(
-                    OtherDbCollection, self.get_collection_name(aggregations)
-                ) as OtherCollection:  # pylint: disable=invalid-name
+            with switch_db(self._document, self._db_connection_alias) as OtherDbCollection:  # pylint: disable=invalid-name
+                with switch_collection(OtherDbCollection, self.get_collection_name(aggregations)) as OtherCollection:  # pylint: disable=invalid-name
                     expire_in = self.get_collection_expiration(OtherCollection)
             # we calculate the expiration time and round it to the nearest minute
             diff = expire_in - datetime.datetime.now()

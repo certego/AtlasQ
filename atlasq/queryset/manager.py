@@ -1,9 +1,8 @@
 from typing import Union
 
-from mongoengine import QuerySetManager
-
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.queryset import AtlasQuerySet
+from mongoengine import QuerySetManager
 
 
 class AtlasManager(QuerySetManager):

@@ -2,11 +2,10 @@ import datetime
 from functools import cached_property
 from unittest.mock import MagicMock
 
-from mongoengine import Document, fields
-from mongoengine.context_managers import switch_collection, switch_db
-
 from atlasq import AtlasManager
 from atlasq.queryset.cache import AtlasCache, AtlasDbCache, AtlasRamCache
+from mongoengine import Document, fields
+from mongoengine.context_managers import switch_collection, switch_db
 from tests.test_base import TestBaseCase
 
 

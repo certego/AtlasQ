@@ -1,7 +1,6 @@
-from mongoengine import Document, QuerySet, fields
-
 from atlasq.queryset.manager import AtlasManager
 from atlasq.queryset.queryset import AtlasQuerySet
+from mongoengine import Document, QuerySet, fields
 from tests.test_base import TestBaseCase
 
 

@@ -1,13 +1,9 @@
 import logging
 from typing import Dict, List, Tuple, Union
 
+from atlasq.queryset.visitor import AtlasQueryCompilerVisitor, AtlasSimplificationVisitor
 from mongoengine import Q
 from mongoengine.queryset.visitor import QCombination
-
-from atlasq.queryset.visitor import (
-    AtlasQueryCompilerVisitor,
-    AtlasSimplificationVisitor,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +45,7 @@ class AtlasQCombination(QCombination):
         result = super()._combine(other, operation)
         return AtlasQCombination(result.operation, result.children)
 
-    def to_query(  # pylint: disable=arguments-differ
-        self, document
-    ) -> Tuple[Dict, List[Dict]]:
+    def to_query(self, document) -> Tuple[Dict, List[Dict]]:  # pylint: disable=arguments-differ
         from atlasq import AtlasQuerySet
 
         qs = getattr(document, "atlas", None)

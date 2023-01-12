@@ -1,6 +1,6 @@
 import copy
-import datetime
 import logging
+import time
 from typing import Any, Dict, List, Tuple
 
 from atlasq.queryset.exceptions import AtlasIndexError
@@ -12,15 +12,15 @@ from pymongo.command_cursor import CommandCursor
 logger = logging.getLogger(__name__)
 
 
-def calculate_time(func):
-    def wrapper(self, *args, **kwargs):
-        start = datetime.datetime.now()
+def clock(func):
+    def clocked(self, *args, **kwargs):
+        start_time = time.perf_counter()
         result = func(self, *args, **kwargs)
-        end = datetime.datetime.now()
-        logger.info(f"{round((end - start).total_seconds(), 3)} - {self._aggrs_query}")  # pylint: disable=protected-access
+        elapsed = time.perf_counter() - start_time
+        logger.info(f"{elapsed:0.3f)} - {result}")
         return result
 
-    return wrapper
+    return clocked
 
 
 # pylint: disable=too-many-instance-attributes
@@ -92,6 +92,7 @@ class AtlasQuerySet(QuerySet):
         )
 
     @property
+    @clock
     def _aggrs(self):
         # corresponding of _query for us
         if self._aggrs_query is None:
@@ -104,7 +105,6 @@ class AtlasQuerySet(QuerySet):
         return self._aggrs_query
 
     @property
-    @calculate_time
     def _cursor(self):
         if not self._search_result:
             self._search_result = self.__collection_aggregate(self._aggrs)

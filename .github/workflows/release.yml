@@ -16,7 +16,7 @@ jobs:
     uses: ./.github/workflows/_release_and_tag.yml
     secrets: inherit
     with:
-      publish_on_pypi: false
-      publish_on_test_pypi: false
+      publish_on_pypi: true
+      publish_on_test_pypi: true
       publish_on_npm: false
       publish_on_twitter: false

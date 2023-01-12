@@ -26,7 +26,7 @@ jobs:
      uses: ./.github/workflows/_python.yml
      secrets: inherit
      with:
-      working_directory: atlasq
+      working_directory: .
       use_black: true
       use_isort: true
       use_flake8: true

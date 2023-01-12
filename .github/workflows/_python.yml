@@ -300,7 +300,6 @@ jobs:
           if [[ '${{ inputs.use_autoflake}}' != 'false' ]]; then
             echo "autoflake==1.7.7" >> requirements-linters.txt
           fi
-          cat $(echo ${{ inputs.requirements_path }} | sed -e 's/.txt/-linter.txt/') >> requirements-linters.txt 2>/dev/null || exit 0
         shell: bash
         working-directory: ${{ inputs.install_from }}
 
@@ -309,7 +308,6 @@ jobs:
           if [[ '${{ inputs.use_coverage }}' != 'false' ]]; then
             echo "coverage>=7.0.1" >> requirements-dev.txt
           fi
-          cat $(echo ${{ inputs.requirements_path }} | sed -e 's/.txt/-dev.txt/') >> requirements-dev.txt 2>/dev/null || exit 0
         shell: bash
         working-directory: ${{ inputs.install_from }}
 
@@ -323,7 +321,6 @@ jobs:
             if [[ -n '${{ inputs.django_settings_module }}' ]]; then
               echo "sphinxcontrib-django2==1.1.1" >> requirements-docs.txt
             fi
-            cat $(echo ${{ inputs.requirements_path }} | sed -e 's/.txt/-docs.txt/') >> requirements-docs.txt 2>/dev/null || exit 0 
           fi
         shell: bash
         working-directory: ${{ inputs.install_from }}

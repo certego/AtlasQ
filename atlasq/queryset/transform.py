@@ -58,10 +58,10 @@ class AtlasTransform:
         "iexact",
         "eq",
     ]
+    all_keywords = ["all"]
     regex_keywords = ["regex", "iregex"]
     size_keywords = ["size"]
     not_converted = [
-        "all",
         "istartswith",
         "startswith",
         "contains",
@@ -73,6 +73,12 @@ class AtlasTransform:
     def __init__(self, atlas_query, atlas_index: AtlasIndex):
         self.atlas_query = atlas_query
         self.atlas_index = atlas_index
+
+    def _all(self, path: str, values: List[str]):
+        filters = []
+        for value in values:
+            filters.append(self._auto_convert_type_to_keyword(path, value))
+        return {"compound": {"must": filters}}
 
     def _regex(self, path: str, value: str):
         return {"regex": {"query": value, "path": path}}
@@ -135,7 +141,7 @@ class AtlasTransform:
             )
         return {"range": {"path": path, **{keyword: value for keyword in keywords}}}
 
-    def _single_equals(self, path, value: Union[ObjectId, bool]):
+    def _single_equals(self, path: str, value: Union[ObjectId, bool]):
         if not isinstance(value, (ObjectId, bool)):
             raise AtlasFieldError(
                 f"Text search for equals on {path=} cannot be {value}, must be ObjectId or bool"
@@ -217,6 +223,21 @@ class AtlasTransform:
             raise TypeError(f"Wrong type {type(value)} for id field")
         return value
 
+    def _auto_convert_type_to_keyword(self, path: str, value: Any) -> Dict:
+        if isinstance(value, list):
+            value_to_check = value[0]
+        elif isinstance(value, dict):
+            raise TypeError("It is not possible to have a dictionary as a value")
+        else:
+            value_to_check = value
+        if isinstance(value_to_check, (bool, ObjectId)):
+            obj = self._equals(path, value)
+        elif isinstance(value_to_check, (int, datetime.datetime)):
+            obj = self._range(path, value, ["gte", "lte"])
+        else:
+            obj = self._text(path, value)
+        return obj
+
     def transform(self) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         other_aggregations = []
         affirmative = []
@@ -242,7 +263,7 @@ class AtlasTransform:
                     value = self._cast_to_object_id(value)
                 if keyword not in self.keywords:
                     continue
-                # the key_part is made of "field__subfield__keywords
+                # the key_part is made of field__subfield__keywords
                 # meaning that the first time that we find a keyword, we have the entire path
                 if not path:
                     path = ".".join(key_parts[:i])
@@ -280,19 +301,13 @@ class AtlasTransform:
                 if keyword in self.regex_keywords:
                     obj = self._regex(path, value)
                     break
+                if keyword in self.all_keywords:
+                    obj = self._all(path, value)
+                    break
             else:
                 if not path:
                     path = ".".join(key_parts)
-                if isinstance(value, list):
-                    value_to_check = value[0]
-                else:
-                    value_to_check = value
-                if isinstance(value_to_check, (bool, ObjectId)):
-                    obj = self._equals(path, value)
-                elif isinstance(value_to_check, (int, datetime.datetime)):
-                    obj = self._range(path, value, ["gte", "lte"])
-                else:
-                    obj = self._text(path, value)
+                obj = self._auto_convert_type_to_keyword(path, value)
 
             if obj:
                 if self.atlas_index.ensured:
@@ -306,13 +321,13 @@ class AtlasTransform:
                     # the mustNot is done inside the embedded document clause
                     affirmative = self.merge_embedded_documents(converted, affirmative)
                 else:
-                    if to_go == 1:
-                        affirmative.append(converted)
-                    else:
-                        negative.append(converted)
+                    affirmative.append(converted) if to_go == 1 else negative.append(
+                        converted
+                    )
         if other_aggregations:
             logger.warning(
                 "CARE! You are generating a query that uses other aggregations other than text search!"
+                "Meaning that the query will be slower."
                 f" Aggregations generated are {other_aggregations}"
             )
         return affirmative, negative, other_aggregations

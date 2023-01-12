@@ -13,6 +13,22 @@ from tests.test_base import TestBaseCase
 
 
 class TestTransformSteps(TestBaseCase):
+    def test_all(self):
+        q = AtlasQ(f__all=["one", "two"])
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        res = t._all("f", ["one", "two"])
+        self.assertEqual(
+            res,
+            {
+                "compound": {
+                    "must": [
+                        {"text": {"query": "one", "path": "f"}},
+                        {"text": {"query": "two", "path": "f"}},
+                    ]
+                }
+            },
+        )
+
     def test_merge_embedded_documents_to_not_embedded(self):
         list_of_objs = [
             {

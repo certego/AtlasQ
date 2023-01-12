@@ -22,7 +22,7 @@ jobs:
 
   python:
      needs: detect-changes
-     if: ${{ needs.detect-changes.outputs.backend > 0 }}
+#     if: ${{ needs.detect-changes.outputs.backend > 0 }}
      uses: ./.github/workflows/_python.yml
      secrets: inherit
      with:

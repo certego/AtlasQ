@@ -43,8 +43,6 @@ jobs:
       use_coverage: true
       upload_coverage: true
 
-      env: >-
-        {"KEY": "VALUE"}
       python_versions: >-
         ["3.8", "3.9", "3.10"]
       max_timeout: 5

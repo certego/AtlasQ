@@ -38,6 +38,8 @@ jobs:
     if: github.event.pull_request.merged == true && ( github.base_ref == 'master' || github.base_ref == 'main' )
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # otherwise, you do not retrieve the tags
 
       - name: Check Tag
         id: check-tag

@@ -34,7 +34,7 @@ runs:
         else
             echo "Skipping pylint formatter"
         fi
-      working-directory: ${{ inputs.working_directory }}
+      working-directory: ${{ inputs.working_directory }}/atlasq
       shell: bash
 
     - name: Black formatter

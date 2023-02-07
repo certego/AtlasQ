@@ -12,6 +12,132 @@ from tests.test_base import TestBaseCase
 
 
 class TestTransformSteps(TestBaseCase):
+    def test_convert_type_keyword_list_datetime(self):
+        nnow = datetime.datetime.now()
+        tomorrow = nnow + datetime.timedelta(days=1)
+        q = AtlasQ(f=[nnow, tomorrow])
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", [nnow, tomorrow])
+        self.assertEqual(
+            result,
+            {
+                "compound": {
+                    "should": [
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": nnow,
+                            }
+                        },
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": tomorrow,
+                            }
+                        },
+                    ],
+                    "minimumShouldMatch": 1,
+                }
+            },
+        )
+
+    def test_convert_type_keyword_datetime(self):
+        nnow = datetime.datetime.now()
+        q = AtlasQ(f=nnow)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", nnow)
+        self.assertEqual(
+            result,
+            {
+                "equals": {
+                    "path": "f",
+                    "value": nnow,
+                }
+            },
+        )
+
+    def test_convert_type_keyword_list_bool(self):
+        q = AtlasQ(f=[True, False])
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", [True, False])
+        self.assertEqual(
+            result,
+            {
+                "compound": {
+                    "should": [
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": True,
+                            }
+                        },
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": False,
+                            }
+                        },
+                    ],
+                    "minimumShouldMatch": 1,
+                }
+            },
+        )
+
+    def test_convert_type_keyword_bool(self):
+        q = AtlasQ(f=True)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", True)
+        self.assertEqual(
+            result,
+            {
+                "equals": {
+                    "path": "f",
+                    "value": True,
+                }
+            },
+        )
+
+    def test_convert_type_to_keyword_objectId(self):
+        q = AtlasQ(f=ObjectId("5e45de3dd2bfea029b68cce2"))
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", ObjectId("5e45de3dd2bfea029b68cce2"))
+        self.assertEqual(
+            result,
+            {
+                "equals": {
+                    "path": "f",
+                    "value": ObjectId("5e45de3dd2bfea029b68cce2"),
+                }
+            },
+        )
+
+    def test_convert_type_to_keyword_list_objectId(self):
+        q = AtlasQ(f=[ObjectId("5e45de3dd2bfea029b68cce2"), ObjectId("5e45de3dd2bfea029b68cce3")])
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", [ObjectId("5e45de3dd2bfea029b68cce2"), ObjectId("5e45de3dd2bfea029b68cce3")])
+        self.assertEqual(
+            result,
+            {
+                "compound": {
+                    "should": [
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": ObjectId("5e45de3dd2bfea029b68cce2"),
+                            }
+                        },
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": ObjectId("5e45de3dd2bfea029b68cce3"),
+                            }
+                        },
+                    ],
+                    "minimumShouldMatch": 1,
+                }
+            },
+        )
+
     def test_all(self):
         q = AtlasQ(f__all=["one", "two"])
         t = AtlasTransform(q.query, AtlasIndex("test"))

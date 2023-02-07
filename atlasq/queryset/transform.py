@@ -48,6 +48,7 @@ class AtlasTransform:
     exists_keywords = ["exists"]
     range_keywords = ["gt", "gte", "lt", "lte"]
     equals_keywords = []
+    equals_type_supported = (bool, ObjectId, int, datetime.datetime)
     text_keywords = [
         "contains",
         "icontains",
@@ -126,7 +127,7 @@ class AtlasTransform:
         return {"range": {"path": path, **{keyword: value for keyword in keywords}}}
 
     def _single_equals(self, path: str, value: Union[ObjectId, bool]):
-        if not isinstance(value, (ObjectId, bool)):
+        if not isinstance(value, self.equals_type_supported):
             raise AtlasFieldError(f"Text search for equals on {path=} cannot be {value}, must be ObjectId or bool")
         return {
             "equals": {
@@ -200,14 +201,14 @@ class AtlasTransform:
     def _auto_convert_type_to_keyword(self, path: str, value: Any) -> Dict:
         if isinstance(value, list):
             value_to_check = value[0]
+            if not all(isinstance(x, value_to_check.__class__) or x is None for x in value):
+                raise TypeError(f"All elements of a list should have the same type: {value}")
         elif isinstance(value, dict):
-            raise TypeError("It is not possible to have a dictionary as a value")
+            raise TypeError(f"It is not possible to have a dictionary as a value: {value}")
         else:
             value_to_check = value
-        if isinstance(value_to_check, (bool, ObjectId)):
+        if isinstance(value_to_check, self.equals_type_supported):
             obj = self._equals(path, value)
-        elif isinstance(value_to_check, (int, datetime.datetime)):
-            obj = self._range(path, value, ["gte", "lte"])
         else:
             obj = self._text(path, value)
         return obj

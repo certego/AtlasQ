@@ -17,7 +17,8 @@ def clock(func):
         start_time = time.perf_counter()
         result = func(self, *args, **kwargs)
         elapsed = time.perf_counter() - start_time
-        logger.info(f"{elapsed:0.3f)} - {result}")
+        floor = f"{elapsed:0.3f}"
+        logger.info(f"{floor} - {result}")
         return result
 
     return clocked

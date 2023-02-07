@@ -1,55 +1,49 @@
-name: Linter & Tests
+name: CI
 
 on:
   pull_request:
-    branches: [main, develop]
-    paths-ignore:
-      - "**.md"
-      - "**.rst"
+    branches:
+      - main
+      - develop
+
+# discard previous execution if you commit to a branch that is already running
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  detect-changes:
+    uses: ./.github/workflows/_detect_changes.yml
+    with:
+      backend_directories: atlasq
+      ubuntu_version: latest
 
-    strategy:
-      fail-fast: false
-      max-parallel: 5
-      matrix:
-        python-version: ["3.8", "3.9", "3.10"]
 
-    steps:
-      - uses: actions/checkout@v2
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
+  python:
+     needs: detect-changes
+#     if: ${{ needs.detect-changes.outputs.backend > 0 }}
+     uses: ./.github/workflows/_python.yml
+     secrets: inherit
+     with:
+      working_directory: .
+      use_black: true
+      use_isort: true
+      use_flake8: true
+      use_pylint: true
+      use_bandit: true
+      use_autoflake: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r dev-requirements.txt
-          pip install -r requirements.txt
+      run_codeql: true
 
-      - name: Flake8
-        run: |
-          flake8 . --count
+      requirements_path: requirements.txt
 
-      - name: Black
-        run: |
-          black . --check
+      check_requirements_licenses: true
 
-      - name: Pylint
-        run: |
-          pylint atlasq
+      use_coverage: true
+      upload_coverage: true
 
-      - name: Isort
-        run: |
-          isort . --profile black --check-only --diff
-
-      - name: Run tox tests
-        run: |
-          tox
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+      python_versions: >-
+        ["3.8", "3.9", "3.10"]
+      max_timeout: 7
+      ubuntu_version: latest

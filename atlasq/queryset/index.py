@@ -4,20 +4,15 @@ from logging import getLogger
 from typing import Dict, List
 
 import requests
-from requests.auth import HTTPDigestAuth
-
 from atlasq.queryset.exceptions import AtlasIndexError, AtlasIndexFieldError
+from requests.auth import HTTPDigestAuth
 
 logger = getLogger(__name__)
 
 ATLAS_BASE_URL = "https://cloud.mongodb.com/api/atlas/v1.0"
-TEXT_INDEXES_ENDPOINT = (
-    ATLAS_BASE_URL + "/groups/{GROUP_ID}/clusters/{CLUSTER_NAME}/fts/indexes"
-)
+TEXT_INDEXES_ENDPOINT = ATLAS_BASE_URL + "/groups/{GROUP_ID}/clusters/{CLUSTER_NAME}/fts/indexes"
 
-LIST_TEXT_INDEXES_ENDPOINT = (
-    TEXT_INDEXES_ENDPOINT + "/{DATABASE_NAME}/{COLLECTION_NAME}"
-)
+LIST_TEXT_INDEXES_ENDPOINT = TEXT_INDEXES_ENDPOINT + "/{DATABASE_NAME}/{COLLECTION_NAME}"
 
 
 class AtlasIndexType(Enum):
@@ -58,6 +53,7 @@ class AtlasIndex:
         self._index = index
         self.ensured = False
 
+    # pylint: disable=too-many-arguments
     def upload_index(
         self,
         data: Dict,
@@ -82,9 +78,7 @@ class AtlasIndex:
 
         if any(id_keyword in data["mappings"]["fields"] for id_keyword in ["id", "pk"]):
             if "_id" not in data["mappings"]["fields"]:
-                data["mappings"]["fields"]["_id"] = {
-                    "type": AtlasIndexType.OBJECT_ID.value
-                }
+                data["mappings"]["fields"]["_id"] = {"type": AtlasIndexType.OBJECT_ID.value}
 
         url = TEXT_INDEXES_ENDPOINT.format(
             GROUP_ID=group_id,
@@ -98,6 +92,7 @@ class AtlasIndex:
         )
         response.raise_for_status()
 
+    # pylint: disable=too-many-arguments
     def ensure_index_exists(
         self,
         user: str,

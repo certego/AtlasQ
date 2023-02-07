@@ -1,0 +1,15 @@
+version: 2
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    target-branch: "develop"
+    reviewers:
+      - 0ssigeno
+
+
+
+

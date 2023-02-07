@@ -2,17 +2,158 @@ import datetime
 import json
 from unittest import expectedFailure
 
-from bson import ObjectId
-from mongoengine import Document, fields
-
 from atlasq.queryset.exceptions import AtlasFieldError, AtlasIndexFieldError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.transform import AtlasTransform
+from bson import ObjectId
+from mongoengine import Document, fields
 from tests.test_base import TestBaseCase
 
 
 class TestTransformSteps(TestBaseCase):
+    def test_convert_type_keyword_list_datetime(self):
+        nnow = datetime.datetime.now()
+        tomorrow = nnow + datetime.timedelta(days=1)
+        q = AtlasQ(f=[nnow, tomorrow])
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", [nnow, tomorrow])
+        self.assertEqual(
+            result,
+            {
+                "compound": {
+                    "should": [
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": nnow,
+                            }
+                        },
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": tomorrow,
+                            }
+                        },
+                    ],
+                    "minimumShouldMatch": 1,
+                }
+            },
+        )
+
+    def test_convert_type_keyword_datetime(self):
+        nnow = datetime.datetime.now()
+        q = AtlasQ(f=nnow)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", nnow)
+        self.assertEqual(
+            result,
+            {
+                "equals": {
+                    "path": "f",
+                    "value": nnow,
+                }
+            },
+        )
+
+    def test_convert_type_keyword_list_bool(self):
+        q = AtlasQ(f=[True, False])
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", [True, False])
+        self.assertEqual(
+            result,
+            {
+                "compound": {
+                    "should": [
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": True,
+                            }
+                        },
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": False,
+                            }
+                        },
+                    ],
+                    "minimumShouldMatch": 1,
+                }
+            },
+        )
+
+    def test_convert_type_keyword_bool(self):
+        q = AtlasQ(f=True)
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", True)
+        self.assertEqual(
+            result,
+            {
+                "equals": {
+                    "path": "f",
+                    "value": True,
+                }
+            },
+        )
+
+    def test_convert_type_to_keyword_objectId(self):
+        q = AtlasQ(f=ObjectId("5e45de3dd2bfea029b68cce2"))
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", ObjectId("5e45de3dd2bfea029b68cce2"))
+        self.assertEqual(
+            result,
+            {
+                "equals": {
+                    "path": "f",
+                    "value": ObjectId("5e45de3dd2bfea029b68cce2"),
+                }
+            },
+        )
+
+    def test_convert_type_to_keyword_list_objectId(self):
+        q = AtlasQ(f=[ObjectId("5e45de3dd2bfea029b68cce2"), ObjectId("5e45de3dd2bfea029b68cce3")])
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        result = t._auto_convert_type_to_keyword("f", [ObjectId("5e45de3dd2bfea029b68cce2"), ObjectId("5e45de3dd2bfea029b68cce3")])
+        self.assertEqual(
+            result,
+            {
+                "compound": {
+                    "should": [
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": ObjectId("5e45de3dd2bfea029b68cce2"),
+                            }
+                        },
+                        {
+                            "equals": {
+                                "path": "f",
+                                "value": ObjectId("5e45de3dd2bfea029b68cce3"),
+                            }
+                        },
+                    ],
+                    "minimumShouldMatch": 1,
+                }
+            },
+        )
+
+    def test_all(self):
+        q = AtlasQ(f__all=["one", "two"])
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        res = t._all("f", ["one", "two"])
+        self.assertEqual(
+            res,
+            {
+                "compound": {
+                    "must": [
+                        {"text": {"query": "one", "path": "f"}},
+                        {"text": {"query": "two", "path": "f"}},
+                    ]
+                }
+            },
+        )
+
     def test_merge_embedded_documents_to_not_embedded(self):
         list_of_objs = [
             {
@@ -25,11 +166,7 @@ class TestTransformSteps(TestBaseCase):
         obj = {
             "embeddedDocument": {
                 "path": "field",
-                "operator": {
-                    "compound": {
-                        "must": [{"text": {"query": "bbb", "path": "field.field4"}}]
-                    }
-                },
+                "operator": {"compound": {"must": [{"text": {"query": "bbb", "path": "field.field4"}}]}},
             }
         }
         AtlasTransform.merge_embedded_documents(obj, list_of_objs)
@@ -68,11 +205,7 @@ class TestTransformSteps(TestBaseCase):
             {
                 "embeddedDocument": {
                     "path": "field",
-                    "operator": {
-                        "compound": {
-                            "must": [{"text": {"query": "bbb", "path": "field.field4"}}]
-                        }
-                    },
+                    "operator": {"compound": {"must": [{"text": {"query": "bbb", "path": "field.field4"}}]}},
                 }
             }
         ]
@@ -217,11 +350,7 @@ class TestTransformSteps(TestBaseCase):
         obj = {
             "embeddedDocument": {
                 "path": "field",
-                "operator": {
-                    "compound": {
-                        "must": [{"text": {"query": "aaa", "path": "field.field2"}}]
-                    }
-                },
+                "operator": {"compound": {"must": [{"text": {"query": "aaa", "path": "field.field2"}}]}},
             }
         }
         list_of_objs = []
@@ -236,11 +365,7 @@ class TestTransformSteps(TestBaseCase):
             {
                 "embeddedDocument": {
                     "path": "field",
-                    "operator": {
-                        "compound": {
-                            "must": [{"text": {"query": "bbb", "path": "field.field3"}}]
-                        }
-                    },
+                    "operator": {"compound": {"must": [{"text": {"query": "bbb", "path": "field.field3"}}]}},
                 }
             }
         ]
@@ -267,13 +392,7 @@ class TestTransformSteps(TestBaseCase):
             {
                 "embeddedDocument": {
                     "path": "field",
-                    "operator": {
-                        "compound": {
-                            "mustNot": [
-                                {"text": {"query": "bbb", "path": "field.field3"}}
-                            ]
-                        }
-                    },
+                    "operator": {"compound": {"mustNot": [{"text": {"query": "bbb", "path": "field.field3"}}]}},
                 }
             }
         ]
@@ -286,12 +405,8 @@ class TestTransformSteps(TestBaseCase):
                     "path": "field",
                     "operator": {
                         "compound": {
-                            "must": [
-                                {"text": {"query": "aaa", "path": "field.field2"}}
-                            ],
-                            "mustNot": [
-                                {"text": {"query": "bbb", "path": "field.field3"}}
-                            ],
+                            "must": [{"text": {"query": "aaa", "path": "field.field2"}}],
+                            "mustNot": [{"text": {"query": "bbb", "path": "field.field3"}}],
                         }
                     },
                 }
@@ -320,12 +435,8 @@ class TestTransformSteps(TestBaseCase):
                         "path": "field",
                         "operator": {
                             "compound": {
-                                "must": [
-                                    {"text": {"query": "aaa", "path": "field.field2"}}
-                                ],
-                                "mustNot": [
-                                    {"text": {"query": "bbb", "path": "field.field3"}}
-                                ],
+                                "must": [{"text": {"query": "aaa", "path": "field.field2"}}],
+                                "mustNot": [{"text": {"query": "bbb", "path": "field.field3"}}],
                             }
                         },
                     }
@@ -371,9 +482,7 @@ class TestTransformSteps(TestBaseCase):
         except AtlasIndexFieldError as e:
             self.fail(e)
         else:
-            self.assertEqual(
-                result[0][0], {"text": {"query": "aaa", "path": "field.field2"}}
-            )
+            self.assertEqual(result[0][0], {"text": {"query": "aaa", "path": "field.field2"}})
 
         index._indexed_fields = {
             "field": "document",
@@ -386,9 +495,7 @@ class TestTransformSteps(TestBaseCase):
         except AtlasIndexFieldError as e:
             self.fail(e)
         else:
-            self.assertEqual(
-                result[0][0], {"text": {"query": "aaa", "path": "field.field2.field3"}}
-            )
+            self.assertEqual(result[0][0], {"text": {"query": "aaa", "path": "field.field2.field3"}})
 
         index._indexed_fields = {
             "field": "document",
@@ -401,9 +508,7 @@ class TestTransformSteps(TestBaseCase):
         except AtlasIndexFieldError as e:
             self.fail(e)
         else:
-            self.assertEqual(
-                result[0][0], {"text": {"query": "aaa", "path": "field.field2.field3"}}
-            )
+            self.assertEqual(result[0][0], {"text": {"query": "aaa", "path": "field.field2.field3"}})
 
         index._indexed_fields = {
             "field": "embeddedDocuments",
@@ -529,9 +634,7 @@ class TestTransformSteps(TestBaseCase):
         objects = MyDoc.objects.all().values_list("field")
 
         q = AtlasQ(f=objects)
-        positive, negative, aggregations = AtlasTransform(
-            q.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q.query, AtlasIndex("test")).transform()
 
         self.assertEqual(positive, [{"text": {"query": ["aaa"], "path": "f"}}])
         self.assertEqual(negative, [])
@@ -703,9 +806,7 @@ class TestTransformSteps(TestBaseCase):
 class TestAtlasQ(TestBaseCase):
     def test_ids_in(self):
         q1 = AtlasQ(id__in=["5e45de3dd2bfea029b68cce2"])
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -743,9 +844,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_size_negative(self):
         q1 = AtlasQ(key__not__size=0)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(positive, [])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -756,9 +855,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_size_positive(self):
         q1 = AtlasQ(key__size=0)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(positive, [])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -769,9 +866,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_none(self):
         q1 = AtlasQ(key__nin=["", None])
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(positive, [])
         self.assertEqual(
@@ -784,9 +879,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_exists_3(self):
         q1 = AtlasQ(key__not__exists=True)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(positive, [])
         self.assertEqual(negative, [{"exists": {"path": "key"}}])
         self.assertEqual(
@@ -796,9 +889,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_exists_2(self):
         q1 = AtlasQ(key__not__exists=False)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(positive, [{"exists": {"path": "key"}}])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -809,9 +900,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_exists_1(self):
         q1 = AtlasQ(key__exists=False)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(positive, [])
         self.assertEqual(negative, [{"exists": {"path": "key"}}])
         self.assertEqual(
@@ -822,9 +911,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_exists_0(self):
         q1 = AtlasQ(key__exists=True)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(positive, [{"exists": {"path": "key"}}])
         self.assertEqual(negative, [])
         self.assertEqual(
@@ -835,9 +922,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_negative_equals(self):
         q1 = AtlasQ(key__ne=True)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(positive, [])
         self.assertEqual(
@@ -850,9 +935,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_equals(self):
         q1 = AtlasQ(key=True)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(
@@ -867,9 +950,7 @@ class TestAtlasQ(TestBaseCase):
         date = "2021-01-01T00:00:00.000Z"
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
         q1 = AtlasQ(last_sent_time__lt=date)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(
@@ -889,9 +970,7 @@ class TestAtlasQ(TestBaseCase):
         date = "2021-01-01T00:00:00.000Z"
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
         q1 = AtlasQ(last_sent_time__gte=date)
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(
@@ -909,9 +988,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_not_whole_word(self):
         q1 = AtlasQ(key__not__wholeword="value")
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual([], aggregations)
         self.assertEqual(
             [
@@ -927,9 +1004,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_field_start_with_keyword(self):
         q1 = AtlasQ(key__in=["value"])
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(
@@ -1036,9 +1111,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_nin(self):
         q1 = AtlasQ(key__nin=["value", "value2"])
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(positive, [])
         self.assertEqual(
@@ -1051,9 +1124,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q_negative(self):
         q1 = AtlasQ(key__ne="value")
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual(aggregations, [])
         self.assertEqual(positive, [])
 
@@ -1067,9 +1138,7 @@ class TestAtlasQ(TestBaseCase):
 
     def test_atlas_q(self):
         q1 = AtlasQ(key="value", key2="value2")
-        positive, negative, aggregations = AtlasTransform(
-            q1.query, AtlasIndex("test")
-        ).transform()
+        positive, negative, aggregations = AtlasTransform(q1.query, AtlasIndex("test")).transform()
         self.assertEqual([], aggregations)
         self.assertEqual([], negative)
         self.assertEqual(

@@ -1,11 +1,10 @@
 import json
 
-from mongoengine import Document, StringField
-
 from atlasq import AtlasManager
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from atlasq.queryset.visitor import AtlasQueryCompilerVisitor
+from mongoengine import Document, StringField
 from tests.test_base import TestBaseCase
 
 
@@ -34,9 +33,7 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
 
         q7 = q5 | q6
 
-        filters, *aggregations = q7.accept(
-            AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
-        )
+        filters, *aggregations = q7.accept(AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test")))
         filters = filters["$search"]
         filters.pop("index")
         self.assertEqual([], aggregations)
@@ -83,13 +80,7 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
                                 ]
                             }
                         },
-                        {
-                            "compound": {
-                                "filter": [
-                                    {"text": {"query": "value5", "path": "key5"}}
-                                ]
-                            }
-                        },
+                        {"compound": {"filter": [{"text": {"query": "value5", "path": "key5"}}]}},
                     ],
                     "minimumShouldMatch": 1,
                 }
@@ -102,9 +93,7 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         q1 = AtlasQ(key="value", key2="value2")
         q2 = AtlasQ(key3="value3", key4="value4")
         q5 = q1 & q2
-        filters, *aggregations = q5.accept(
-            AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
-        )
+        filters, *aggregations = q5.accept(AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test")))
         filters = filters["$search"]
         filters.pop("index")
         self.assertEqual([], aggregations)
@@ -127,9 +116,7 @@ class TestAtlasQueryCompilerVisitor(TestBaseCase):
         q1 = AtlasQ(key="value", key2="value2")
         q2 = AtlasQ(key3="value3", key4="value4")
         q5 = q1 | q2
-        filters, *aggregations = q5.accept(
-            AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test"))
-        )
+        filters, *aggregations = q5.accept(AtlasQueryCompilerVisitor(MyDocument, AtlasIndex("test")))
         filters = filters["$search"]
         filters.pop("index")
         self.assertEqual([], aggregations)

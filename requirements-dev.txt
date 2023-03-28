@@ -1,2 +1,2 @@
-pre-commit==2.19.0
+pre-commit==3.2.1
 mongomock==4.1.2

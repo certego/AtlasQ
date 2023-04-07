@@ -148,7 +148,7 @@ class AtlasQuerySet(QuerySet):
                 continue
             if obj:
                 ids.append(obj["_id"])
-        self._query_obj = Q(id__in=ids)
+        self._query_obj = Q(pk__in=ids)
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 

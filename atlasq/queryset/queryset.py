@@ -49,6 +49,7 @@ class AtlasQuerySet(QuerySet):
         self._search_result: CommandCursor = None
         self._return_objects: bool = True
         self._other_aggregations: List[Dict] = []
+        self._scores: Dict = {}
 
     # pylint: disable=too-many-arguments
     def upload_index(
@@ -146,7 +147,8 @@ class AtlasQuerySet(QuerySet):
                 continue
             if obj:
                 ids.append(obj["_id"])
-        self._query_obj = Q(pk__in=ids)
+                self._scores[obj["_id"]] = obj["score"]
+        self._query_obj = Q(pk__in=ids)  # sorted by natural order (ObjectIDs)
         logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 

@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, List, Tuple
+from collections import defaultdict
 
 from atlasq.queryset.index import AtlasIndex
 from mongoengine import Q
@@ -85,11 +86,15 @@ class AtlasQueryCompilerVisitor(QueryCompilerVisitor):
         from atlasq.queryset.transform import AtlasTransform
 
         affirmative, negative, aggregations = AtlasTransform(query.query, self.atlas_index).transform()
-        filters = {}
+        filters = defaultdict(dict)
         if affirmative:
-            filters.setdefault("compound", {})["filter"] = affirmative
+            filters["compound"]["filter"] = affirmative
         if negative:
-            filters.setdefault("compound", {})["mustNot"] = negative
+            filters["compound"]["mustNot"] = negative
+
+        if len(filters["compound"]) == 1 and "filter" in filters["compound"] and len(affirmative) == 1:
+            filters = affirmative[0]
+
         result = []
         if filters:
             filters["index"] = self.atlas_index.index

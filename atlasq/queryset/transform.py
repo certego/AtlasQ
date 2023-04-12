@@ -151,6 +151,11 @@ class AtlasTransform:
     def _text(self, path: str, value: Any) -> Dict:
         if not value:
             raise AtlasFieldError(f"Text search for {path} cannot be {value}")
+
+        # TODO {base_field}.*
+        if "*" in self.atlas_index._indexed_fields:
+            path = {"wildcard": "*"}
+
         return {
             "text": {"query": value, "path": path},
         }

@@ -189,14 +189,16 @@ class AtlasQuerySet(QuerySet):
         return [{"$project": projections}] if projections else []
 
     def count(self, with_limit_and_skip=False):  # pylint: disable=unused-argument
-        cursor = self.__collection_aggregate(self._aggrs)  # pylint: disable=protected-access
+        need_count_stage = "$match" in self._aggrs[1]
+        aggrs = self._aggrs + [{"$count": "count"}] if need_count_stage else self._aggrs
+        cursor = self.__collection_aggregate(aggrs)  # pylint: disable=protected-access
         try:
             count = next(cursor)
         except StopIteration:
             self._len = 0  # pylint: disable=attribute-defined-outside-init
         else:
             logger.debug(count)
-            if self._query_obj:
+            if self._query_obj and not need_count_stage:
                 self._len = count["meta"]["count"]["total"]  # pylint: disable=attribute-defined-outside-init
             else:
                 self._len = count["count"]  # pylint: disable=attribute-defined-outside-init

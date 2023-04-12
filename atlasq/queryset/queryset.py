@@ -207,3 +207,9 @@ class AtlasQuerySet(QuerySet):
         qs._limit = n  # pylint: disable=protected-access
         qs._other_aggregations.append({"$limit": n})  # pylint: disable=protected-access
         return qs
+
+    def skip(self, n):
+        qs = self.clone()
+        qs._skip = n  # pylint: disable=protected-access
+        qs._other_aggregations.append({"$skip": n})  # pylint: disable=protected-access
+        return qs

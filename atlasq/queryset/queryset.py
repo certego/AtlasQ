@@ -31,7 +31,6 @@ class AtlasQuerySet(QuerySet):
             "index",
             "_aggrs_query",
             "_search_result",
-            "_count",
             "_return_objects",
             "_other_aggregations",
         )
@@ -48,7 +47,6 @@ class AtlasQuerySet(QuerySet):
 
         self._aggrs_query: List[Dict[str, Any]] = None
         self._search_result: CommandCursor = None
-        self._count: bool = False
         self._return_objects: bool = True
         self._other_aggregations: List[Dict] = []
 
@@ -179,18 +177,17 @@ class AtlasQuerySet(QuerySet):
         return qs
 
     def _get_projections(self) -> List[Dict[str, Any]]:
-        if self._count:
-            if self._query_obj:
-                return [{"$project": {"meta": "$$SEARCH_META"}}]
-            return [{"$count": "count"}]
         loaded_fields = self._loaded_fields.as_dict()
         logger.debug(loaded_fields)
+        projections = {}
         if loaded_fields:
-            return [{"$project": loaded_fields}]
-        return []
+            projections.update(loaded_fields)
+        if self._query_obj:
+            projections.update({"meta": "$$SEARCH_META", "score": {"$meta": "searchScore"}})
+
+        return [{"$project": projections}] if projections else []
 
     def count(self, with_limit_and_skip=False):  # pylint: disable=unused-argument
-        self._count = True  # pylint: disable=protected-access
         cursor = self.__collection_aggregate(self._aggrs)  # pylint: disable=protected-access
         try:
             count = next(cursor)

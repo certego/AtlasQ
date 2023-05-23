@@ -56,7 +56,7 @@ test = [
     "flake8==4.0.1",
     "pre-commit==2.19.0",
     "tox==3.25.0",
-    "tox-gh-actions==2.9.1",
+    "tox-gh-actions==3.1.1",
     "codecov==2.1.12",
     "coverage==6.4",
     "mongomock==4.1.2",

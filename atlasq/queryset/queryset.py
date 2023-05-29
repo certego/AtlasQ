@@ -9,8 +9,6 @@ from atlasq.queryset.node import AtlasQ
 from mongoengine import Q, QuerySet
 from pymongo.command_cursor import CommandCursor
 
-logger = logging.getLogger(__name__)
-
 
 def clock(func):
     def clocked(self, *args, **kwargs):
@@ -18,7 +16,7 @@ def clock(func):
         result = func(self, *args, **kwargs)
         elapsed = time.perf_counter() - start_time
         floor = f"{elapsed:0.3f}"
-        logger.info(f"{floor} - {result}")
+        self.logger.info(f"{floor} - {result}")
         return result
 
     return clocked
@@ -51,6 +49,7 @@ class AtlasQuerySet(QuerySet):
         self._count: bool = False
         self._return_objects: bool = True
         self._other_aggregations: List[Dict] = []
+        self.logger = logging.getLogger(f"{__name__}.{self._document._get_collection_name()}")
 
     # pylint: disable=too-many-arguments
     def upload_index(
@@ -69,7 +68,7 @@ class AtlasQuerySet(QuerySet):
             json_index["database"] = db_name
         if "name" not in json_index:
             json_index["name"] = self.index._index  # pylint: disable=protected-access
-        logger.info(f"Sending {json_index} to create new index")
+        self.logger.info(f"Sending {json_index} to create new index")
         return self.index.upload_index(json_index, user, password, group_id, cluster_name)
 
     def ensure_index(self, user: str, password: str, group_id: str, cluster_name: str):
@@ -149,14 +148,14 @@ class AtlasQuerySet(QuerySet):
             if obj:
                 ids.append(obj["_id"])
         self._query_obj = Q(id__in=ids)
-        logger.debug(self._query_obj.to_query(self._document))
+        self.logger.debug(self._query_obj.to_query(self._document))
         return super()._query
 
     def __collection_aggregate(self, final_pipeline, **kwargs):
         collection = self._collection
         if self._read_preference is not None or self._read_concern is not None:
             collection = self._collection.with_options(read_preference=self._read_preference, read_concern=self._read_concern)
-        logger.info(final_pipeline)
+        self.logger.info(final_pipeline)
         return collection.aggregate(final_pipeline, cursor={}, **kwargs)
 
     def aggregate(self, pipeline, **kwargs):  # pylint: disable=arguments-differ,unused-argument
@@ -174,7 +173,7 @@ class AtlasQuerySet(QuerySet):
         q = AtlasQ(**query)
         if q_obj is not None:
             q &= q_obj
-        logger.debug(q)
+        self.logger.debug(q)
         qs = super().__call__(q)
         return qs
 
@@ -184,7 +183,7 @@ class AtlasQuerySet(QuerySet):
                 return [{"$project": {"meta": "$$SEARCH_META"}}]
             return [{"$count": "count"}]
         loaded_fields = self._loaded_fields.as_dict()
-        logger.debug(loaded_fields)
+        self.logger.debug(loaded_fields)
         if loaded_fields:
             return [{"$project": loaded_fields}]
         return []
@@ -197,12 +196,12 @@ class AtlasQuerySet(QuerySet):
         except StopIteration:
             self._len = 0  # pylint: disable=attribute-defined-outside-init
         else:
-            logger.debug(count)
+            self.logger.debug(count)
             if self._query_obj:
                 self._len = count["meta"]["count"]["total"]  # pylint: disable=attribute-defined-outside-init
             else:
                 self._len = count["count"]  # pylint: disable=attribute-defined-outside-init
-        logger.debug(self._len)
+        self.logger.debug(self._len)
         return self._len
 
     def limit(self, n):

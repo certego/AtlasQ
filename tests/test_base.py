@@ -1,13 +1,13 @@
 from unittest import TestCase
 
+import mongomock
 from mongoengine import connect, disconnect
 
 
 class TestBaseCase(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.db_name = "mongoenginetest"
-        connect(cls.db_name, host="mongomock://localhost")
+        connect(db="mongoenginetest", mongo_client_class=mongomock.MongoClient)
 
     @classmethod
     def tearDownClass(cls) -> None:

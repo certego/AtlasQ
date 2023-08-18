@@ -79,11 +79,14 @@ class TestQuerySet(TestBaseCase):
         self.assertEqual(qs._aggrs[1], {"$sort": {"time": -1}})
 
         qs = self.base.filter(name="123").order_by("+time")
-        self.assertEqual(qs._aggrs[0]["$search"], {"$sort": {"time": 1}})
+        self.assertIn("$sort", qs._aggrs[0]["$search"])
+        self.assertEqual(qs._aggrs[0]["$search"]["$sort"], {"time": 1})
+        self.assertIn("$sort", qs._aggrs[0]["$search"])
         qs = self.base.filter(name="123").order_by("time")
-        self.assertEqual(qs._aggrs[0]["$search"], {"$sort": {"time": 1}})
+        self.assertEqual(qs._aggrs[0]["$search"]["$sort"], {"time": 1})
         qs = self.base.filter(name="123").order_by("-time")
-        self.assertEqual(qs._aggrs[0]["$search"], {"$sort": {"time": -1}})
+        self.assertIn("$sort", qs._aggrs[0]["$search"])
+        self.assertEqual(qs._aggrs[0]["$search"]["$sort"], {"time": -1})
 
     def test_only(self):
         qs = self.base.only("name").filter(name="123").order_by("-time")

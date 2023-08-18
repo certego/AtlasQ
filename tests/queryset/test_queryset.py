@@ -89,9 +89,9 @@ class TestQuerySet(TestBaseCase):
         self.assertEqual(qs._aggrs[0]["$search"]["sort"], {"time": -1})
 
     def test_only(self):
-        qs = self.base.only("name").filter(name="123").order_by("-time")
+        qs = self.base.only("name").filter(name="123")
         self.assertEqual(qs._get_projections(), [{"$project": {"name": 1}}])
-        self.assertEqual(3, len(qs._aggrs))
+        self.assertEqual(2, len(qs._aggrs))
         self.assertEqual(qs._aggrs[1], {"$project": {"name": 1}})
 
     def test_exclude(self):

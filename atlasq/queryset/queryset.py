@@ -113,13 +113,16 @@ class AtlasQuerySet(QuerySet):
         cursor = super()._cursor
         return cursor
 
-    def order_by(self, *keys):
+    def order_by(self, *keys, as_aggregation: bool = False):
         if not keys:
             return self
         qs: AtlasQuerySet = self.clone()
         order_by: List[Tuple[str, int]] = qs._get_order_by(keys)  # pylint: disable=protected-access
-        aggregation = {"$sort": dict(order_by)}
-        qs._other_aggregations.append(aggregation)  # pylint: disable=protected-access
+        # https://www.mongodb.com/docs/atlas/atlas-search/sort/#syntax
+        if self._aggrs_query and not as_aggregation:
+            self._aggrs_query[0]["$search"]["sort"] = dict(order_by)
+        else:
+            qs._other_aggregations.append({"$sort": dict(order_by)})  # pylint: disable=protected-access
         return qs
 
     def __getitem__(self, key):

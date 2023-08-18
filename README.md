@@ -127,3 +127,10 @@ result = MyDocument.atlas.ensure_index("user", "pwd", "group", "cluster")
 assert result is True
 
 ```
+
+
+### Sort
+On the [10th of July 2023](https://www.mongodb.com/docs/atlas/atlas-search/changelog/#10-july-2023-release), the `Sort` functionality was released for Atlas search.
+
+AtlasQ, from version 0.12.0, will support this feature inside the `order_by` function.
+To have the old behaviour of the order_by (useful if you want to sort _after_ aggregations and not after the search stage), you can set the kwarg `as_aggregation` as `True`.

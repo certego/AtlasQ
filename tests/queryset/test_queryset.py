@@ -69,19 +69,29 @@ class TestQuerySet(TestBaseCase):
         self.assertEqual(r, 0)
 
     def test_order_by(self):
-        qs = self.base.order_by("-time")
+        qs = self.base.order_by("-time", as_aggregation=True)
         self.assertEqual(qs._aggrs[0], {"$sort": {"time": -1}})
-        qs = self.base.order_by("+time")
+        qs = self.base.order_by("+time", as_aggregation=True)
         self.assertEqual(qs._aggrs[0], {"$sort": {"time": 1}})
-        qs = self.base.order_by("time")
+        qs = self.base.order_by("time", as_aggregation=True)
         self.assertEqual(qs._aggrs[0], {"$sort": {"time": 1}})
-        qs = self.base.order_by("-time").filter(name="123")
+        qs = self.base.order_by("-time", as_aggregation=True).filter(name="123")
         self.assertEqual(qs._aggrs[1], {"$sort": {"time": -1}})
 
+        qs = self.base.filter(name="123").order_by("+time")
+        self.assertIn("sort", qs._aggrs[0]["$search"])
+        self.assertEqual(qs._aggrs[0]["$search"]["sort"], {"time": 1})
+        self.assertIn("sort", qs._aggrs[0]["$search"])
+        qs = self.base.filter(name="123").order_by("time")
+        self.assertEqual(qs._aggrs[0]["$search"]["sort"], {"time": 1})
+        qs = self.base.filter(name="123").order_by("-time")
+        self.assertIn("sort", qs._aggrs[0]["$search"])
+        self.assertEqual(qs._aggrs[0]["$search"]["sort"], {"time": -1})
+
     def test_only(self):
-        qs = self.base.only("name").filter(name="123").order_by("-time")
+        qs = self.base.only("name").filter(name="123")
         self.assertEqual(qs._get_projections(), [{"$project": {"name": 1}}])
-        self.assertEqual(3, len(qs._aggrs))
+        self.assertEqual(2, len(qs._aggrs))
         self.assertEqual(qs._aggrs[1], {"$project": {"name": 1}})
 
     def test_exclude(self):

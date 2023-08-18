@@ -101,7 +101,7 @@ class AtlasQuerySet(QuerySet):
                 if self._count:
                     self._aggrs_query[0]["$search"]["count"] = {"type": "total"}
                 if self._ordering:
-                    self._aggrs_query[0]["$search"]["sort"] = self._ordering
+                    self._aggrs_query[0]["$search"]["sort"] = dict(self._ordering)
             self._aggrs_query += self._get_projections()
             self._aggrs_query += self._other_aggregations
         return self._aggrs_query

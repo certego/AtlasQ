@@ -100,6 +100,8 @@ class AtlasQuerySet(QuerySet):
             if self._aggrs_query:
                 if self._count:
                     self._aggrs_query[0]["$search"]["count"] = {"type": "total"}
+                if self._ordering:
+                    self._aggrs_query[0]["$search"]["sort"] = dict(self._ordering)
             self._aggrs_query += self._get_projections()
             self._aggrs_query += self._other_aggregations
         return self._aggrs_query
@@ -113,13 +115,15 @@ class AtlasQuerySet(QuerySet):
         cursor = super()._cursor
         return cursor
 
-    def order_by(self, *keys):
+    def order_by(self, *keys, as_aggregation: bool = False):
         if not keys:
             return self
         qs: AtlasQuerySet = self.clone()
         order_by: List[Tuple[str, int]] = qs._get_order_by(keys)  # pylint: disable=protected-access
-        aggregation = {"$sort": dict(order_by)}
-        qs._other_aggregations.append(aggregation)  # pylint: disable=protected-access
+        if not as_aggregation:
+            qs._ordering = order_by  # pylint: disable=protected-access
+        else:
+            qs._other_aggregations.append({"$sort": dict(order_by)})  # pylint: disable=protected-access
         return qs
 
     def __getitem__(self, key):
@@ -188,8 +192,8 @@ class AtlasQuerySet(QuerySet):
             return [{"$project": loaded_fields}]
         return []
 
-    def count(self, with_limit_and_skip=False):  # pylint: disable=unused-argument
-        self._count = True  # pylint: disable=protected-access
+    def count(self, with_limit_and_skip=False) -> int:  # pylint: disable=unused-argument
+        self._count = True
         cursor = self.__collection_aggregate(self._aggrs)  # pylint: disable=protected-access
         try:
             count = next(cursor)

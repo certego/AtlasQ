@@ -193,6 +193,7 @@ class AtlasQuerySet(QuerySet):
         return []
 
     def count(self, with_limit_and_skip=False) -> int:  # pylint: disable=unused-argument
+        self._count = True
         cursor = self.__collection_aggregate(self._aggrs)  # pylint: disable=protected-access
         try:
             count = next(cursor)

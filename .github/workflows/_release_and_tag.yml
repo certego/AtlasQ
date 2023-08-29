@@ -60,6 +60,10 @@ jobs:
           prerelease: false
           target_commitish: ${{ github.base_ref }}
 
+      - name: Checkout created tag
+        uses: actions/checkout@v3
+        if: inputs.publish_on_test_pypi || inputs.publish_on_pypi
+
       - uses: actions/setup-python@v1
         if: inputs.publish_on_pypi || inputs.publish_on_test_pypi
         with:
@@ -74,10 +78,6 @@ jobs:
         if: inputs.publish_on_pypi || inputs.publish_on_test_pypi
         run: |
           python -m build --sdist --wheel --outdir dist/
-
-      - name: Checkout created tag
-        uses: actions/checkout@v3
-        if: steps.check-tag.outputs.match == 'true' && ( inputs.publish_on_test_pypi || inputs.publish_on_pypi)
 
       - name: Publish to test PyPi
         uses: pypa/gh-action-pypi-publish@release/v1

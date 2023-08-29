@@ -43,7 +43,9 @@ class AtlasTransform:
         "iregex",
         "match",
         "is",
+        "type",
     ]
+    type_keywords = ["type"]
     negative_keywords = ["ne", "nin", "not"]
     exists_keywords = ["exists"]
     range_keywords = ["gt", "gte", "lt", "lte"]
@@ -73,6 +75,15 @@ class AtlasTransform:
     def __init__(self, atlas_query, atlas_index: AtlasIndex):
         self.atlas_query = atlas_query
         self.atlas_index = atlas_index
+
+    def _type(self, path: str, value: str):
+        return {
+            "$match": {
+                path: {
+                    "$type": value,
+                }
+            }
+        }
 
     def _all(self, path: str, values: List[str]):
         filters = []
@@ -273,6 +284,10 @@ class AtlasTransform:
                 if keyword in self.all_keywords:
                     obj = self._all(path, value)
                     break
+                if keyword in self.type_keywords:
+                    if to_go == -1:
+                        raise NotImplementedError(f"At the moment you can't have a negative `{keyword}` keyword")
+                    other_aggregations.append(self._type(path, value))
             else:
                 if not path:
                     path = ".".join(key_parts)

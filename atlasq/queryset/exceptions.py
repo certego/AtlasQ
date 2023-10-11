@@ -12,3 +12,7 @@ class AtlasIndexError(AtlasError):
 
 class AtlasFieldError(AtlasError):
     pass
+
+
+class AtlasQueryError(AtlasError):
+    pass

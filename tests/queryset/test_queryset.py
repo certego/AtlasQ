@@ -69,13 +69,13 @@ class TestQuerySet(TestBaseCase):
         self.assertEqual(r, 0)
 
     def test_order_by(self):
-        qs = self.base.order_by("-time", as_aggregation=True)
+        qs = self.base.order_by("-time")
         self.assertEqual(qs._aggrs[0], {"$sort": {"time": -1}})
-        qs = self.base.order_by("+time", as_aggregation=True)
+        qs = self.base.order_by("+time")
         self.assertEqual(qs._aggrs[0], {"$sort": {"time": 1}})
-        qs = self.base.order_by("time", as_aggregation=True)
+        qs = self.base.order_by("time")
         self.assertEqual(qs._aggrs[0], {"$sort": {"time": 1}})
-        qs = self.base.order_by("-time", as_aggregation=True).filter(name="123")
+        qs = self.base.order_by("-time").filter(name="123")
         self.assertEqual(qs._aggrs[1], {"$sort": {"time": -1}})
 
         qs = self.base.filter(name="123").order_by("+time")

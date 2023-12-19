@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from atlasq import AtlasManager, AtlasQ
-from atlasq.queryset.exceptions import AtlasIndexFieldError
+from atlasq.queryset.exceptions import AtlasIndexFieldError, AtlasQueryError
 from mongoengine import Document, ListField, StringField
 from mongomock import command_cursor
 from mongomock.command_cursor import CommandCursor
@@ -69,15 +69,9 @@ class TestQuerySet(TestBaseCase):
         self.assertEqual(r, 0)
 
     def test_order_by(self):
-        qs = self.base.order_by("-time", as_aggregation=True)
-        self.assertEqual(qs._aggrs[0], {"$sort": {"time": -1}})
-        qs = self.base.order_by("+time", as_aggregation=True)
-        self.assertEqual(qs._aggrs[0], {"$sort": {"time": 1}})
-        qs = self.base.order_by("time", as_aggregation=True)
-        self.assertEqual(qs._aggrs[0], {"$sort": {"time": 1}})
-        qs = self.base.order_by("-time", as_aggregation=True).filter(name="123")
-        self.assertEqual(qs._aggrs[1], {"$sort": {"time": -1}})
-
+        with self.assertRaises(AtlasQueryError):
+            qs = self.base.order_by("-time")
+            _ = qs._aggrs
         qs = self.base.filter(name="123").order_by("+time")
         self.assertIn("sort", qs._aggrs[0]["$search"])
         self.assertEqual(qs._aggrs[0]["$search"]["sort"], {"time": 1})

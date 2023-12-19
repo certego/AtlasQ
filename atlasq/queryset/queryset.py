@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Any, Dict, List, Tuple
 
-from atlasq.queryset.exceptions import AtlasIndexError
+from atlasq.queryset.exceptions import AtlasIndexError, AtlasQueryError
 from atlasq.queryset.index import AtlasIndex
 from atlasq.queryset.node import AtlasQ
 from mongoengine import Q, QuerySet
@@ -102,6 +102,9 @@ class AtlasQuerySet(QuerySet):
                     self._aggrs_query[0]["$search"]["count"] = {"type": "total"}
                 if self._ordering:
                     self._aggrs_query[0]["$search"]["sort"] = dict(self._ordering)
+            else:
+                if self._ordering:
+                    raise AtlasQueryError("Atlas search does not support ordering without filtering.")
             self._aggrs_query += self._get_projections()
             self._aggrs_query += self._other_aggregations
         return self._aggrs_query
@@ -115,15 +118,12 @@ class AtlasQuerySet(QuerySet):
         cursor = super()._cursor
         return cursor
 
-    def order_by(self, *keys, as_aggregation: bool = False):
+    def order_by(self, *keys):
         if not keys:
             return self
         qs: AtlasQuerySet = self.clone()
         order_by: List[Tuple[str, int]] = qs._get_order_by(keys)  # pylint: disable=protected-access
-        if not as_aggregation:
-            qs._ordering = order_by  # pylint: disable=protected-access
-        else:
-            qs._other_aggregations.append({"$sort": dict(order_by)})  # pylint: disable=protected-access
+        qs._ordering = order_by  # pylint: disable=protected-access
         return qs
 
     def __getitem__(self, key):
@@ -159,7 +159,7 @@ class AtlasQuerySet(QuerySet):
         collection = self._collection
         if self._read_preference is not None or self._read_concern is not None:
             collection = self._collection.with_options(read_preference=self._read_preference, read_concern=self._read_concern)
-        self.logger.info(final_pipeline)
+        self.logger.debug(final_pipeline)
         return collection.aggregate(final_pipeline, cursor={}, **kwargs)
 
     def aggregate(self, pipeline, **kwargs):  # pylint: disable=arguments-differ,unused-argument

@@ -72,8 +72,6 @@ class TestQuerySet(TestBaseCase):
         with self.assertRaises(AtlasQueryError):
             qs = self.base.order_by("-time")
             _ = qs._aggrs
-        self.assertEqual(qs._aggrs[0], {"$sort": {"time": 1}})
-
         qs = self.base.filter(name="123").order_by("+time")
         self.assertIn("sort", qs._aggrs[0]["$search"])
         self.assertEqual(qs._aggrs[0]["$search"]["sort"], {"time": 1})

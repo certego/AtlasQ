@@ -799,6 +799,17 @@ class TestTransformSteps(TestBaseCase):
             json.dumps(aggregations, indent=4),
         )
 
+    def test_multiple_contains(self):
+        q = AtlasQ(f__contains__gte="test1", f__contains__lte="test2")
+        positive, negative, aggregations = AtlasTransform(q.query, AtlasIndex("test")).transform()
+        self.assertEqual(positive, [])
+        self.assertEqual(negative, [])
+        self.assertEqual(
+            {"f": {"$elemMatch": {"$gte": "test1", "$lte": "test2"}}},
+            aggregations[0],
+            json.dumps(aggregations, indent=4),
+        )
+
     def test__size_operator_not_supported(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query, AtlasIndex("test"))

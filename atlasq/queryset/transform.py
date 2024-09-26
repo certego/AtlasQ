@@ -11,6 +11,22 @@ from mongoengine import QuerySet
 logger = logging.getLogger(__name__)
 
 
+def mergedicts(dict1, dict2):
+    for k in set(dict1.keys()).union(dict2.keys()):
+        if k in dict1 and k in dict2:
+            if isinstance(dict1[k], dict) and isinstance(dict2[k], dict):
+                yield k, dict(mergedicts(dict1[k], dict2[k]))
+            else:
+                # If one of the values is not a dict, you can't continue merging it.
+                # Value from second dict overrides one in first and we move on.
+                yield k, dict2[k]
+                # Alternatively, replace this with exception raiser to alert you of value conflicts
+        elif k in dict1:
+            yield k, dict1[k]
+        else:
+            yield k, dict2[k]
+
+
 class AtlasTransform:
 
     id_keywords = [
@@ -145,12 +161,13 @@ class AtlasTransform:
             }
         }
 
-    def _contains(self, path: str, value: Any):
-        return {path: {"$elemMatch": value}}
+    def _contains(self, path: str, value: Any, keyword: str = None):
+        if not keyword:
+            return {path: {"$elemMatch": value}}
+        return {path: {"$elemMatch": {keyword: value}}}
 
     def _equals(self, path: str, value: Union[List[Union[ObjectId, bool]], ObjectId, bool]) -> Dict:
         if isinstance(value, list):
-
             values = value
             if not values:
                 raise AtlasFieldError(f"Text search for equals on {path=} cannot be empty")
@@ -301,8 +318,21 @@ class AtlasTransform:
                     obj = self._endswith(path, value)
                     break
                 if keyword in self.contains_keywords:
-                    other_aggregations.append(self._contains(path, value))
-                    break
+                    # this is because we could have contains__gte=3
+                    try:
+                        comparison_keyword = key_parts[i + 1]
+                    except IndexError:
+                        aggregation = self._contains(path, value, "$eq")
+                    else:
+                        aggregation = self._contains(path, value, comparison_keyword)
+                    for j, aggr in enumerate(other_aggregations):
+                        if path in aggr:
+                            # if we have another path__contains__keyword, we merge them
+                            other_aggregations[j] = mergedicts(aggr, aggregation)
+                            break
+                    else:
+                        other_aggregations.append(aggregation)
+
                 if keyword in self.type_keywords:
                     if positive == -1:
                         raise NotImplementedError(f"At the moment you can't have a negative `{keyword}` keyword")

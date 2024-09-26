@@ -52,6 +52,8 @@ class AtlasTransform:
         "icontains",
         "startswith",
         "istartswith",
+        "iendswith",
+        "endswith",
         "iwholeword",
         "wholeword",
         "not",

@@ -794,7 +794,7 @@ class TestTransformSteps(TestBaseCase):
         self.assertEqual(positive, [])
         self.assertEqual(negative, [])
         self.assertEqual(
-            {"f": {"$elemMatch": "test"}},
+            {"f": {"$elemMatch": {"$eq": "test"}}},
             aggregations[0],
             json.dumps(aggregations, indent=4),
         )

@@ -1,5 +1,6 @@
 import datetime
 import logging
+import re
 from typing import Any, Dict, List, Tuple, Union
 
 from atlasq.queryset.exceptions import AtlasFieldError, AtlasIndexFieldError
@@ -51,9 +52,10 @@ class AtlasTransform:
     range_keywords = ["gt", "gte", "lt", "lte"]
     equals_keywords = []
     equals_type_supported = (bool, ObjectId, int, datetime.datetime)
+    startswith_keywords = ["startswith", "istartswith"]
+    endswith_keywords = ["endswith", "iendswith"]
+    contains_keywords = ["contains", "icontains"]
     text_keywords = [
-        "contains",
-        "icontains",
         "iwholeword",
         "wholeword",
         "exact",
@@ -64,10 +66,6 @@ class AtlasTransform:
     regex_keywords = ["regex", "iregex"]
     size_keywords = ["size"]
     not_converted = [
-        "istartswith",
-        "startswith",
-        "contains",
-        "icontains",
         "mod",
         "match",
     ]
@@ -147,6 +145,9 @@ class AtlasTransform:
             }
         }
 
+    def _contains(self, path: str, value: Any):
+        return {path: {"$elemMatch": value}}
+
     def _equals(self, path: str, value: Union[List[Union[ObjectId, bool]], ObjectId, bool]) -> Dict:
         if isinstance(value, list):
 
@@ -165,6 +166,16 @@ class AtlasTransform:
         return {
             "text": {"query": value, "path": path},
         }
+
+    def _startswith(self, path: str, value: Any) -> Dict:
+        if not value:
+            raise AtlasFieldError(f"Text search for {path} cannot be {value}")
+        return self._regex(path, f"{re.escape(value)}.*")
+
+    def _endswith(self, path: str, value: Any) -> Dict:
+        if not value:
+            raise AtlasFieldError(f"Text search for {path} cannot be {value}")
+        return self._regex(path, f".*{re.escape(value)}")
 
     def _size(self, path: str, value: int, operator: str) -> Dict:
         if not isinstance(value, int):
@@ -230,9 +241,9 @@ class AtlasTransform:
         negative = []
 
         for key, value in self.atlas_query.items():
-            # if to_go is positive, we add the element in the positive list
-            # if to_go is negative, we add the element in the negative list
-            to_go = 1
+            # if the value is positive, we add the element in the positive list
+            # if the value is negative, we add the element in the negative list
+            positive = 1
             if isinstance(value, QuerySet):
                 logger.debug("Casting queryset to list, otherwise the aggregation will fail")
                 value = list(value)
@@ -240,7 +251,6 @@ class AtlasTransform:
             obj = None
             path = ""
             for i, keyword in enumerate(key_parts):
-
                 if keyword in self.id_keywords:
                     keyword = "_id"
                     key_parts[i] = keyword
@@ -255,17 +265,17 @@ class AtlasTransform:
                 if keyword in self.not_converted:
                     raise NotImplementedError(f"Keyword {keyword} not implemented yet")
                 if keyword in self.negative_keywords:
-                    to_go *= -1
+                    positive *= -1
 
                 if keyword in self.size_keywords:
                     # it must the last keyword, otherwise we do not support it
                     if i != len(key_parts) - 1:
                         raise NotImplementedError(f"Keyword {keyword} not implemented yet")
-                    other_aggregations.append(self._size(path, value, "eq" if to_go == 1 else "ne"))
+                    other_aggregations.append(self._size(path, value, "eq" if positive == 1 else "ne"))
                     break
                 if keyword in self.exists_keywords:
                     if value is False:
-                        to_go *= -1
+                        positive *= -1
                     obj = self._exists(path)
                     break
 
@@ -284,8 +294,17 @@ class AtlasTransform:
                 if keyword in self.all_keywords:
                     obj = self._all(path, value)
                     break
+                if keyword in self.startswith_keywords:
+                    obj = self._startswith(path, value)
+                    break
+                if keyword in self.endswith_keywords:
+                    obj = self._endswith(path, value)
+                    break
+                if keyword in self.contains_keywords:
+                    other_aggregations.append(self._contains(path, value))
+                    break
                 if keyword in self.type_keywords:
-                    if to_go == -1:
+                    if positive == -1:
                         raise NotImplementedError(f"At the moment you can't have a negative `{keyword}` keyword")
                     other_aggregations.append(self._type(path, value))
             else:
@@ -297,13 +316,13 @@ class AtlasTransform:
                 if self.atlas_index.ensured:
                     self._ensure_path_is_indexed(path.split("."))
                 # we are wrapping the result to an embedded document
-                converted = self._convert_to_embedded_document(path.split("."), obj, positive=to_go == 1)
+                converted = self._convert_to_embedded_document(path.split("."), obj, positive=positive == 1)
                 if obj != converted:
                     # we have an embedded object
                     # the mustNot is done inside the embedded document clause
                     affirmative = self.merge_embedded_documents(converted, affirmative)
                 else:
-                    if to_go == 1:
+                    if positive == 1:
                         affirmative.append(converted)
                     else:
                         negative.append(converted)

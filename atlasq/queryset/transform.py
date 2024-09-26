@@ -331,7 +331,7 @@ class AtlasTransform:
                     for j, aggr in enumerate(other_aggregations):
                         if path in aggr:
                             # if we have another path__contains__keyword, we merge them
-                            other_aggregations[j] = mergedicts(aggr, aggregation)
+                            other_aggregations[j] = dict(mergedicts(aggr, aggregation))
                             break
                     else:
                         other_aggregations.append(aggregation)

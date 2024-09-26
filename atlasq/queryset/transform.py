@@ -325,6 +325,7 @@ class AtlasTransform:
                         aggregation = self._contains(path, value, "$eq")
                     else:
                         aggregation = self._contains(path, value, comparison_keyword)
+                    # we are merging together the contains, because in the 100% of cases we want to match the same object
                     for j, aggr in enumerate(other_aggregations):
                         if path in aggr:
                             # if we have another path__contains__keyword, we merge them

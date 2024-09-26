@@ -166,7 +166,7 @@ class AtlasTransform:
     def _contains(self, path: str, value: Any, keyword: str = None):
         if not keyword:
             return {path: {"$elemMatch": value}}
-        return {path: {"$elemMatch": {keyword: value}}}
+        return {path: {"$elemMatch": {f"${keyword}": value}}}
 
     def _equals(self, path: str, value: Union[List[Union[ObjectId, bool]], ObjectId, bool]) -> Dict:
         if isinstance(value, list):

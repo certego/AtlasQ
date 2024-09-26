@@ -72,14 +72,7 @@ class AtlasTransform:
     equals_type_supported = (bool, ObjectId, int, datetime.datetime)
     startswith_keywords = ["startswith", "istartswith"]
     endswith_keywords = ["endswith", "iendswith"]
-    contains_keywords = ["contains", "icontains"]
-    text_keywords = [
-        "iwholeword",
-        "wholeword",
-        "exact",
-        "iexact",
-        "eq",
-    ]
+    text_keywords = ["iwholeword", "wholeword", "exact", "iexact", "eq", "contains", "icontains"]
     all_keywords = ["all"]
     regex_keywords = ["regex", "iregex"]
     size_keywords = ["size"]
@@ -162,11 +155,6 @@ class AtlasTransform:
                 "value": value,
             }
         }
-
-    def _contains(self, path: str, value: Any, keyword: str = None):
-        if not keyword:
-            return {path: {"$elemMatch": value}}
-        return {path: {"$elemMatch": {f"${keyword}": value}}}
 
     def _equals(self, path: str, value: Union[List[Union[ObjectId, bool]], ObjectId, bool]) -> Dict:
         if isinstance(value, list):
@@ -318,23 +306,6 @@ class AtlasTransform:
                     break
                 if keyword in self.endswith_keywords:
                     obj = self._endswith(path, value)
-                    break
-                if keyword in self.contains_keywords:
-                    # this is because we could have contains__gte=3
-                    try:
-                        comparison_keyword = key_parts[i + 1]
-                    except IndexError:
-                        aggregation = self._contains(path, value, "eq")
-                    else:
-                        aggregation = self._contains(path, value, comparison_keyword)
-                    # we are merging together the contains, because in the 100% of cases we want to match the same object
-                    for j, aggr in enumerate(other_aggregations):
-                        if path in aggr:
-                            # if we have another path__contains__keyword, we merge them
-                            other_aggregations[j] = dict(mergedicts(aggr, aggregation))
-                            break
-                    else:
-                        other_aggregations.append(aggregation)
                     break
                 if keyword in self.type_keywords:
                     if positive == -1:

@@ -324,7 +324,7 @@ class AtlasTransform:
                     try:
                         comparison_keyword = key_parts[i + 1]
                     except IndexError:
-                        aggregation = self._contains(path, value, "$eq")
+                        aggregation = self._contains(path, value, "eq")
                     else:
                         aggregation = self._contains(path, value, comparison_keyword)
                     # we are merging together the contains, because in the 100% of cases we want to match the same object

@@ -332,7 +332,7 @@ class AtlasTransform:
                             break
                     else:
                         other_aggregations.append(aggregation)
-
+                    break
                 if keyword in self.type_keywords:
                     if positive == -1:
                         raise NotImplementedError(f"At the moment you can't have a negative `{keyword}` keyword")

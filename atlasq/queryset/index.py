@@ -142,8 +142,8 @@ class AtlasIndex:
             if base_field:
                 if lucene_type not in AtlasIndexType.values():
                     logger.warning(f"Lucene type {lucene_type} not configured")
-                    return
-                self._indexed_fields[base_field] = lucene_type
+                else:
+                    self._indexed_fields[base_field] = lucene_type
 
     def _set_indexed_from_mappings(self, index_result: Dict):
         mappings = index_result["mappings"]

@@ -102,6 +102,7 @@ class TestIndex(TestBaseCase):
             }
         )
         self.assertCountEqual(index._indexed_fields, ["*"])
+        index._indexed_fields.clear()
         index._set_indexed_fields([{"type": "string"}, {"type": "number"}], "f")
         self.assertCountEqual(index._indexed_fields, ["f"])
 

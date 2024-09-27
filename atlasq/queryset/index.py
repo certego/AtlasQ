@@ -126,7 +126,7 @@ class AtlasIndex:
     def _set_indexed_fields(self, index_result: Union[Dict, List], base_field: str = ""):
         if isinstance(index_result, list):
             for obj in index_result:
-                self._set_indexed_fields(obj, base_field)
+                self._set_indexed_fields(obj, base_field=base_field)
         else:
             lucene_type = index_result["type"]
             if lucene_type in [

@@ -752,7 +752,7 @@ class TestTransformSteps(TestBaseCase):
         self.assertEqual(res["compound"]["should"][0]["equals"]["path"], "field")
         self.assertEqual(res["compound"]["should"][0]["equals"]["value"], True)
 
-    def test(self):
+    def test_equal(self):
         q = AtlasQ(f=3)
         t = AtlasTransform(q.query, AtlasIndex("test"))
         res = t._text("field", "aaa")
@@ -767,6 +767,26 @@ class TestTransformSteps(TestBaseCase):
         t = AtlasTransform(q.query, AtlasIndex("test"))
         with self.assertRaises(AtlasFieldError):
             t._text("field", None)
+
+    def test_convert_startswith(self):
+        q = AtlasQ(f__startswith="test?")
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        res = t._startswith("f", "test?")
+        self.assertIn("regex", res)
+        self.assertIn("query", res["regex"])
+        self.assertIn("test\\?.*", res["regex"]["query"])
+        self.assertIn("path", res["regex"])
+        self.assertIn("f", res["regex"]["path"])
+
+    def test_convert_endswith(self):
+        q = AtlasQ(f__endswith="test?")
+        t = AtlasTransform(q.query, AtlasIndex("test"))
+        res = t._endswith("f", "test?")
+        self.assertIn("regex", res)
+        self.assertIn("query", res["regex"])
+        self.assertIn(".*test\\?", res["regex"]["query"])
+        self.assertIn("path", res["regex"])
+        self.assertIn("f", res["regex"]["path"])
 
     def test__size_operator_not_supported(self):
         q = AtlasQ(f=3)

@@ -1,7 +1,7 @@
 import fnmatch
 from enum import Enum
 from logging import getLogger
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import requests
 from atlasq.queryset.exceptions import AtlasIndexError, AtlasIndexFieldError
@@ -123,22 +123,27 @@ class AtlasIndex:
             self.ensured = False
         return self.ensured
 
-    def _set_indexed_fields(self, index_result: Dict, base_field: str = ""):
-        lucene_type = index_result["type"]
-        if lucene_type in [
-            AtlasIndexType.DOCUMENT.value,
-            AtlasIndexType.EMBEDDED_DOCUMENT.value,
-        ]:
-            if not index_result.get("dynamic", False):
-                for field, value in index_result.get("fields", {}).items():
-                    field = f"{base_field}.{field}" if base_field else field
-                    self._set_indexed_fields(value, base_field=field)
-            else:
-                self._indexed_fields[f"{base_field}.*" if base_field else "*"] = ""
-        if base_field:
-            if lucene_type not in AtlasIndexType.values():
-                logger.warning(f"Lucene type {lucene_type} not configured")
-            self._indexed_fields[base_field] = lucene_type
+    def _set_indexed_fields(self, index_result: Union[Dict, List], base_field: str = ""):
+        if isinstance(index_result, list):
+            for obj in index_result:
+                self._set_indexed_fields(obj, base_field=base_field)
+        else:
+            lucene_type = index_result["type"]
+            if lucene_type in [
+                AtlasIndexType.DOCUMENT.value,
+                AtlasIndexType.EMBEDDED_DOCUMENT.value,
+            ]:
+                if not index_result.get("dynamic", False):
+                    for field, value in index_result.get("fields", {}).items():
+                        field = f"{base_field}.{field}" if base_field else field
+                        self._set_indexed_fields(value, base_field=field)
+                else:
+                    self._indexed_fields[f"{base_field}.*" if base_field else "*"] = ""
+            if base_field:
+                if lucene_type not in AtlasIndexType.values():
+                    logger.warning(f"Lucene type {lucene_type} not configured")
+                else:
+                    self._indexed_fields[base_field] = lucene_type
 
     def _set_indexed_from_mappings(self, index_result: Dict):
         mappings = index_result["mappings"]
